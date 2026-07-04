@@ -7,17 +7,17 @@
 
 ## Phase 0: プロジェクト初期化
 
-- [ ] **T0-1: Vite プロジェクト作成**
+- [x] **T0-1: Vite プロジェクト作成**
   - `npm create vite@latest . -- --template react-ts` でリポジトリ直下に作成
   - DoD: `npm run dev` で空の React アプリが起動する
 
-- [ ] **T0-2: 依存関係の追加**
+- [x] **T0-2: 依存関係の追加**
   - `codemirror`, `@codemirror/view`, `@codemirror/state`, `@codemirror/language`,
     `@codemirror/commands`, `@codemirror/theme-one-dark`, `@codemirror/legacy-modes`
   - devDependencies: `@webgpu/types`
   - DoD: `npm install` が成功し、`package.json` に全依存が記載されている
 
-- [ ] **T0-3: TypeScript 設定**
+- [x] **T0-3: TypeScript 設定**
   - `tsconfig.json` の `compilerOptions.types` に `@webgpu/types` を追加
   - DoD: `.ts` ファイル内で `GPUDevice` 等の型が解決され `tsc --noEmit` が通る
 
@@ -25,38 +25,38 @@
 
 ## Phase 1: 静的レイアウト
 
-- [ ] **T1-1: ダークテーマの CSS 変数定義**（plan §7 Phase 1, spec §12.1）
+- [x] **T1-1: ダークテーマの CSS 変数定義**（plan §7 Phase 1, spec §12.1）
   - 背景（黒に近い濃紺/チャコール）/ パネル / 境界線 / アクセント紫 / 成功緑 /
     エラー赤 / テキスト白 / 補足グレー を CSS 変数として定義
   - 最小画面幅 1024px（spec §12.3）
   - DoD: CSS 変数が定義され、全コンポーネントから参照可能
 
-- [ ] **T1-2: App レイアウト骨格**（spec §5.1, §12.2）
+- [x] **T1-2: App レイアウト骨格**（spec §5.1, §12.2）
   - Header / Editor 45% / Preview 55% / StatusBar の grid レイアウト
   - DoD: 4領域が仕様比率で表示される
 
-- [ ] **T1-3: Header コンポーネント（静的）**（plan §5.1, spec §5.2）
+- [x] **T1-3: Header コンポーネント（静的）**（plan §5.1, spec §5.2）
   - ロゴアイコン + `WGSL Playground` + `Write and preview WGSL shaders in real time.`
   - Run（Ctrl+Enter 併記）/ Reset / Save ボタン（`⋮` メニューは置かない）
   - Props: `HeaderProps { onRun, onReset, onSave }`（この時点でハンドラは空でよい）
   - DoD: image.png に近い見た目のヘッダーが表示される
 
-- [ ] **T1-4: EditorPane 仮実装（textarea）**（plan §7 Phase 1）
+- [x] **T1-4: EditorPane 仮実装（textarea）**（plan §7 Phase 1）
   - セクションタイトル `Editor` + ファイルタブ `shader.wgsl`（固定1つ、+/× は置かない）
   - プレーン `<textarea>` で `code` / `onChange` の制御コンポーネントとして動作
   - DoD: 初期コード（spec §9）が表示され編集できる
 
-- [ ] **T1-5: PreviewPane 骨格（canvas のみ）**
+- [x] **T1-5: PreviewPane 骨格（canvas のみ）**
   - セクションタイトル `Preview` + `<canvas>` 配置
   - Fit ドロップダウン / フルスクリーンボタンの見た目のみ配置（機能は Phase 6）
   - DoD: canvas が Preview 領域いっぱいに表示される
 
-- [ ] **T1-6: StatusBar コンポーネント（静的）**（plan §5.4, spec §5.5）
+- [x] **T1-6: StatusBar コンポーネント（静的）**（plan §5.4, spec §5.5）
   - Compile / FPS / Resolution / GPU / Backend: `WebGPU` / WGSL Version: `WGSL` を表示
   - Props: `StatusBarProps { compileStatus, fps, resolution, gpuName? }`
   - DoD: ダミー値で全項目が表示される
 
-- [ ] **T1-7: constants/defaultShader.ts**（spec §9, plan §6.4.1）
+- [x] **T1-7: constants/defaultShader.ts**（spec §9, plan §6.4.1）
   - spec §9 の初期コードを文字列定数として定義（image.png 内のコードは使わない。plan §1.1）
   - 初期コード冒頭のコメントに、plan §6.4.1 のユーザー向け仕様を明記する:
     「`time` / `resolution` の uniform を使うには、この `struct Uniforms` と
