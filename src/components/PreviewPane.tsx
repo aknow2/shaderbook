@@ -10,7 +10,7 @@ import {
 import { wrapShader } from '../gpu/shaderWrapper'
 
 const webgpuUnsupportedMessage =
-  'WebGPU is not supported in this browser. Please use a browser that supports WebGPU.'
+  'WebGPU is not supported in this browser.\nPlease use a browser that supports WebGPU.'
 const deviceLostMessage = 'GPU device was lost. Please reload the page.'
 
 type GpuState = {

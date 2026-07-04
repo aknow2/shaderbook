@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { EditorPane } from './components/EditorPane'
+import { ErrorPanel } from './components/ErrorPanel'
 import { Header } from './components/Header'
 import { PreviewPane } from './components/PreviewPane'
 import { StatusBar, type CompileStatus } from './components/StatusBar'
@@ -14,7 +15,7 @@ type Resolution = {
 function App() {
   const [code, setCode] = useState(defaultShader)
   const [compileStatus, setCompileStatus] = useState<CompileStatus>('idle')
-  const [, setErrorMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [fps, setFps] = useState(0)
   const [resolution, setResolution] = useState<Resolution>({ width: 0, height: 0 })
   const [gpuName, setGpuName] = useState<string | undefined>('Unknown')
@@ -70,7 +71,10 @@ function App() {
     <div className="app-shell">
       <Header onRun={handleRun} onReset={handleReset} onSave={handleSave} />
       <main className="workspace" aria-label="Shader workspace">
-        <EditorPane code={code} onChange={setCode} />
+        <div className="editor-column">
+          <EditorPane code={code} onChange={setCode} />
+          <ErrorPanel message={errorMessage} />
+        </div>
         <PreviewPane
           code={code}
           shouldCompile={shouldCompile}

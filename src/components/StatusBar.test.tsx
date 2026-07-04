@@ -20,4 +20,20 @@ describe('StatusBar', () => {
     expect(screen.getByText('Backend: WebGPU')).toBeInTheDocument()
     expect(screen.getByText('WGSL')).toBeInTheDocument()
   })
+
+  it.each([
+    ['idle', 'Compile: Idle', 'compile-idle'],
+    ['success', 'Compile: Success', 'compile-success'],
+    ['error', 'Compile: Error', 'compile-error'],
+  ] as const)('renders %s compile status text and class', (compileStatus, text, className) => {
+    render(
+      <StatusBar
+        compileStatus={compileStatus}
+        fps={0}
+        resolution={{ width: 0, height: 0 }}
+      />,
+    )
+
+    expect(screen.getByText(text)).toHaveClass(className)
+  })
 })

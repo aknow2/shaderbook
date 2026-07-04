@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import type { PreviewPaneProps } from './components/PreviewPane'
 import { defaultShader } from './constants/defaultShader'
 
 const mocks = vi.hoisted(() => ({
@@ -45,6 +46,16 @@ function dispatchShortcut(target: Element, init: KeyboardEventInit) {
   })
   target.dispatchEvent(event)
   return event
+}
+
+function getLastPreviewPaneProps(): PreviewPaneProps {
+  const lastCall = mocks.PreviewPane.mock.lastCall as [PreviewPaneProps] | undefined
+
+  if (!lastCall) {
+    throw new Error('PreviewPane was not rendered')
+  }
+
+  return lastCall[0]
 }
 
 describe('App Run, Save, and keyboard shortcuts', () => {
@@ -153,5 +164,40 @@ describe('App Run, Save, and keyboard shortcuts', () => {
       )
     })
     expect(createObjectURL).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('App compile status and error display', () => {
+  beforeEach(() => {
+    mocks.PreviewPane.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('shows compile errors from PreviewPane and clears them on compile success', async () => {
+    render(<App />)
+
+    const previewProps = getLastPreviewPaneProps()
+
+    act(() => {
+      previewProps.onCompileError("error: unresolved identifier 'uniform'")
+    })
+
+    expect(screen.getByText('Compile: Error')).toBeInTheDocument()
+    expect(screen.getByText("error: unresolved identifier 'uniform'")).toBeInTheDocument()
+    expect(
+      screen.getByText('行番号はラップ後のWGSL全体に対するものです'),
+    ).toBeInTheDocument()
+
+    act(() => {
+      previewProps.onCompileSuccess()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Compile: Success')).toBeInTheDocument()
+    })
+    expect(screen.queryByText("error: unresolved identifier 'uniform'")).not.toBeInTheDocument()
   })
 })

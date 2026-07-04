@@ -44,7 +44,17 @@ function setNavigatorGpu(gpu: unknown) {
   })
 }
 
+function createDeferredLostInfo() {
+  let resolve!: (info: GPUDeviceLostInfo) => void
+  const promise = new Promise<GPUDeviceLostInfo>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 function createWebGpuMock() {
+  const lost = createDeferredLostInfo()
   const context = {
     configure: vi.fn(),
     getCurrentTexture: vi.fn(() => ({
@@ -84,7 +94,7 @@ function createWebGpuMock() {
       submit: vi.fn(),
     },
     destroy: vi.fn(),
-    lost: new Promise<GPUDeviceLostInfo>(() => {}),
+    lost: lost.promise,
   }
   const adapter = {
     info: { description: 'Mock GPU' },
@@ -96,7 +106,7 @@ function createWebGpuMock() {
   }
   setNavigatorGpu(gpu)
 
-  return { gpu, adapter, device, context, createShaderModule, createRenderPipelineAsync }
+  return { gpu, adapter, device, context, createShaderModule, createRenderPipelineAsync, lost }
 }
 
 function renderPreview(overrides?: Partial<React.ComponentProps<typeof PreviewPane>>) {
@@ -132,11 +142,14 @@ describe('PreviewPane WebGPU integration', () => {
 
     renderPreview()
 
-    expect(
-      await screen.findByText(
-        'WebGPU is not supported in this browser. Please use a browser that supports WebGPU.',
-      ),
-    ).toBeInTheDocument()
+    const message = await screen.findByText(
+      'WebGPU is not supported in this browser. Please use a browser that supports WebGPU.',
+    )
+    expect(message).toBeInTheDocument()
+    expect(message).toHaveTextContent(
+      'WebGPU is not supported in this browser.\nPlease use a browser that supports WebGPU.',
+      { normalizeWhitespace: false },
+    )
   })
 
   it('compiles once and starts one render loop under React StrictMode', async () => {
@@ -233,5 +246,35 @@ describe('PreviewPane WebGPU integration', () => {
     rerender(<PreviewPane {...props} shouldCompile={false} />)
     await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(3))
     expect(onCompileSuccess).toHaveBeenCalledTimes(3)
+  })
+
+  it('ignores destroyed device lost reasons without showing a message', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview()
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      gpu.lost.resolve({ reason: 'destroyed', message: '' } as GPUDeviceLostInfo)
+    })
+
+    expect(screen.queryByText('GPU device was lost. Please reload the page.')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('WebGPU shader preview')).toBeInTheDocument()
+  })
+
+  it('shows device lost message and stops the render loop for non-destroyed reasons', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview()
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      gpu.lost.resolve({ reason: 'unknown', message: '' } as GPUDeviceLostInfo)
+    })
+
+    expect(screen.getByText('GPU device was lost. Please reload the page.')).toBeInTheDocument()
+    expect(raf.cancelAnimationFrame).toHaveBeenCalledTimes(1)
   })
 })

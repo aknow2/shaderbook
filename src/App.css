@@ -132,8 +132,17 @@ kbd {
   background: var(--color-panel);
 }
 
-.editor-pane {
+.editor-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid var(--color-border);
+  background: var(--color-panel);
+}
+
+.editor-pane {
+  flex: 1;
 }
 
 .panel-header {
@@ -235,6 +244,7 @@ kbd {
   background: #05070b;
   font-size: 14px;
   text-align: center;
+  white-space: pre-line;
 }
 
 .status-bar {
@@ -281,4 +291,28 @@ kbd {
 
 .compile-error::before {
   background: var(--color-error);
+}
+
+.error-panel {
+  max-height: 132px;
+  overflow: auto;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(251, 113, 133, 0.45);
+  color: var(--color-error);
+  background: rgba(251, 113, 133, 0.08);
+  font-family: var(--font-mono);
+}
+
+.error-panel pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+.error-panel p {
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
 }

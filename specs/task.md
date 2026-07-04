@@ -179,28 +179,28 @@
 
 ## Phase 5: ステータス表示とエラーハンドリング
 
-- [ ] **T5-1: コンパイルステータス連携**（spec §6.2, §11.1）
+- [x] **T5-1: コンパイルステータス連携**（spec §6.2, §11.1）
   - `onCompileSuccess` / `onCompileError` → `compileStatus` / `errorMessage` state 更新
   - StatusBar: `Compile: Success`（緑）/ `Compile: Error`（赤）+ テキスト併記（spec §19）
   - DoD: 成功/失敗がステータスバーに正しく反映される
 
-- [ ] **T5-2: ErrorPanel**（plan §5.5, spec §11.1）
+- [x] **T5-2: ErrorPanel**（plan §5.5, spec §11.1）
   - `{ message: string | null }` — EditorPane 直下、非 null 時のみ表示
   - `GPUCompilationMessage` 整形表示 + 行番号ズレの注記
   - DoD: 構文エラー時にエディター下部へエラーメッセージが出て、
     直前の正常描画は維持される
 
-- [ ] **T5-3: FPS / Resolution 表示**（spec §6.5, §6.6）
+- [x] **T5-3: FPS / Resolution 表示**（spec §6.5, §6.6）
   - `onFpsChange`（0.5〜1秒間隔）→ `FPS: 60.0` 形式
   - `onResolutionChange` → `Resolution: 1280 x 720` 形式（devicePixelRatio 考慮値）
   - DoD: 実測値がステータスバーに表示され、リサイズで Resolution が変わる
 
-- [ ] **T5-4: GPU 名表示**（plan §1.1, §4）
+- [x] **T5-4: GPU 名表示**（plan §1.1, §4）
   - `PreviewPaneProps` に `onGpuInfo` を追加、`GPUAdapterInfo` から取得
     （取得不可なら `Unknown`）
   - DoD: ステータスバーに GPU 名または `Unknown` が表示される
 
-- [ ] **T5-5: WebGPU 非対応 / device lost 表示**（spec §11.2, §11.3, plan §5.3 手順7）
+- [x] **T5-5: WebGPU 非対応 / device lost 表示**（spec §11.2, §11.3, plan §5.3 手順7）
   - 非対応: `WebGPU is not supported in this browser. Please use a browser that supports WebGPU.`
   - device lost（世代一致 && reason !== 'destroyed' のみ）:
     `GPU device was lost. Please reload the page.` を表示し、renderLoop を停止する
