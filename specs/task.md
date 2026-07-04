@@ -230,7 +230,7 @@
   - Fullscreen API で Preview 領域を全画面化。全画面中もリサイズ追従（T2-7 が効くこと）
   - DoD: 全画面化・解除ができ、解像度表示も追従する
 
-- [ ] **T6-4: 最終検証**（plan §8, spec §18, §22）
+- [x] **T6-4: 最終検証**（plan §8, spec §18, §22）
   - `tsc --noEmit` / `npm run build` が通る
   - MVP 完了条件（spec §22 の全10項目）を手動確認:
     1. 左に WGSL エディター表示
