@@ -31,6 +31,10 @@ describe('EditorPane', () => {
 
     expect(screen.getByText('Editor')).toBeInTheDocument()
     expect(screen.getByText('shader.wgsl')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open shader file shader.wgsl' })).toHaveAttribute(
+      'aria-label',
+      'Open shader file shader.wgsl',
+    )
     expect(getEditorView().state.doc.toString()).toBe('fn mainImage() {}')
   })
 

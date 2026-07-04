@@ -2,7 +2,7 @@ export type ErrorPanelProps = {
   message: string | null
 }
 
-const lineNumberNote = '行番号はラップ後のWGSL全体に対するものです'
+const lineNumberNote = 'Line numbers refer to the generated WGSL, which wraps your code.'
 
 export function ErrorPanel({ message }: ErrorPanelProps) {
   if (!message) {

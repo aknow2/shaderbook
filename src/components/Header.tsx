@@ -17,14 +17,19 @@ export function Header({ onRun, onReset, onSave }: HeaderProps) {
         </div>
       </div>
       <div className="header-actions" aria-label="Shader actions">
-        <button type="button" className="button button-primary" onClick={onRun}>
+        <button
+          type="button"
+          className="button button-primary"
+          aria-label="Run"
+          onClick={onRun}
+        >
           <span>Run</span>
           <kbd>Ctrl+Enter</kbd>
         </button>
-        <button type="button" className="button" onClick={onReset}>
+        <button type="button" className="button" aria-label="Reset" onClick={onReset}>
           Reset
         </button>
-        <button type="button" className="button" onClick={onSave}>
+        <button type="button" className="button" aria-label="Save" onClick={onSave}>
           Save
         </button>
       </div>

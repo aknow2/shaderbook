@@ -139,7 +139,12 @@ export function EditorPane({ code, onChange }: EditorPaneProps) {
         <h2 id="editor-title">Editor</h2>
       </div>
       <div className="file-tabs" aria-label="Open shader files">
-        <button type="button" className="file-tab" aria-current="page">
+        <button
+          type="button"
+          className="file-tab"
+          aria-label="Open shader file shader.wgsl"
+          aria-current="page"
+        >
           shader.wgsl
         </button>
       </div>

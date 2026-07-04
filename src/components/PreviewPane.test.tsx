@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultShader } from '../constants/defaultShader'
 import { PreviewPane } from './PreviewPane'
@@ -220,6 +220,88 @@ describe('PreviewPane WebGPU integration', () => {
     expect(canvas.width).toBe(640)
     expect(canvas.height).toBe(360)
     expect(onResolutionChange).toHaveBeenLastCalledWith(640, 360)
+  })
+
+  it('renders an accessible Fit scale menu with Fit as the only option', () => {
+    setNavigatorGpu(undefined)
+    installRafMock()
+
+    renderPreview()
+
+    const scaleMenu = screen.getByRole('combobox', { name: 'Preview scale' })
+    const options = screen.getAllByRole('option')
+
+    expect(scaleMenu).toHaveAttribute('aria-label', 'Preview scale')
+    expect(scaleMenu).toHaveValue('fit')
+    expect(options).toHaveLength(1)
+    expect(options[0]).toHaveTextContent('Fit')
+    expect(options[0]).toHaveValue('fit')
+
+    fireEvent.change(scaleMenu, { target: { value: 'fit' } })
+    expect(scaleMenu).toHaveValue('fit')
+  })
+
+  it('requests fullscreen on the preview frame when the fullscreen button is clicked', () => {
+    setNavigatorGpu(undefined)
+    installRafMock()
+    const requestFullscreen = vi.fn(function (this: HTMLElement) {
+      return Promise.resolve(this)
+    })
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreen,
+    })
+
+    const { container } = renderPreview()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen preview' }))
+
+    const previewFrame = container.querySelector('.canvas-frame')
+    expect(requestFullscreen).toHaveBeenCalledTimes(1)
+    expect(requestFullscreen.mock.contexts[0]).toBe(previewFrame)
+  })
+
+  it('exits fullscreen and switches the button name after fullscreenchange', () => {
+    setNavigatorGpu(undefined)
+    installRafMock()
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: vi.fn(() => Promise.resolve()),
+    })
+    const exitFullscreen = vi.fn(() => Promise.resolve())
+    Object.defineProperty(document, 'exitFullscreen', {
+      configurable: true,
+      value: exitFullscreen,
+    })
+
+    const { container } = renderPreview()
+    const previewFrame = container.querySelector('.canvas-frame')
+
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      value: previewFrame,
+    })
+    act(() => {
+      document.dispatchEvent(new Event('fullscreenchange'))
+    })
+
+    const fullscreenButton = screen.getByRole('button', { name: 'Exit fullscreen preview' })
+    expect(fullscreenButton).toHaveTextContent('Exit fullscreen')
+
+    fireEvent.click(fullscreenButton)
+    expect(exitFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('exposes the preview controls with accessible names', () => {
+    setNavigatorGpu(undefined)
+    installRafMock()
+
+    renderPreview()
+
+    expect(screen.getByRole('combobox', { name: 'Preview scale' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Enter fullscreen preview' }),
+    ).toBeInTheDocument()
   })
 
   it('recompiles on every shouldCompile toggle, including a second Run', async () => {

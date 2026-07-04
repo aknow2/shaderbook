@@ -91,6 +91,7 @@ export function PreviewPane({
     onGpuInfo,
   })
   const [previewMessage, setPreviewMessage] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   codeRef.current = code
   callbacksRef.current = {
@@ -142,6 +143,35 @@ export function PreviewPane({
       }
 
       callbacksRef.current.onCompileError(getErrorMessage(error))
+    }
+  }, [])
+
+  const handleFullscreenClick = useCallback(() => {
+    const frame = frameRef.current
+    if (!frame) {
+      return
+    }
+
+    const fullscreenElement = document.fullscreenElement
+    const fullscreenPromise = fullscreenElement
+      ? document.exitFullscreen()
+      : frame.requestFullscreen()
+
+    void fullscreenPromise.catch(() => {
+      // The browser may reject fullscreen requests outside a trusted user gesture.
+    })
+  }, [])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === frameRef.current)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    handleFullscreenChange()
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
   }, [])
 
@@ -254,11 +284,16 @@ export function PreviewPane({
       <div className="panel-header preview-header">
         <h2 id="preview-title">Preview</h2>
         <div className="preview-tools">
-          <button type="button" className="control-button" aria-label="Preview scale: Fit">
-            Fit
-          </button>
-          <button type="button" className="control-button" aria-label="Fullscreen preview">
-            Fullscreen
+          <select className="control-select" aria-label="Preview scale" defaultValue="fit">
+            <option value="fit">Fit</option>
+          </select>
+          <button
+            type="button"
+            className="control-button"
+            aria-label={isFullscreen ? 'Exit fullscreen preview' : 'Enter fullscreen preview'}
+            onClick={handleFullscreenClick}
+          >
+            {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           </button>
         </div>
       </div>

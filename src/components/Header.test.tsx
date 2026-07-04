@@ -32,4 +32,23 @@ describe('Header', () => {
     expect(onReset).toHaveBeenCalledTimes(1)
     expect(onSave).toHaveBeenCalledTimes(1)
   })
+
+  it('gives primary actions explicit accessible names and keeps them focusable', () => {
+    render(<Header onRun={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} />)
+
+    const runButton = screen.getByRole('button', { name: 'Run' })
+    const resetButton = screen.getByRole('button', { name: 'Reset' })
+    const saveButton = screen.getByRole('button', { name: 'Save' })
+
+    expect(runButton).toHaveAttribute('aria-label', 'Run')
+    expect(resetButton).toHaveAttribute('aria-label', 'Reset')
+    expect(saveButton).toHaveAttribute('aria-label', 'Save')
+
+    runButton.focus()
+    expect(runButton).toHaveFocus()
+    resetButton.focus()
+    expect(resetButton).toHaveFocus()
+    saveButton.focus()
+    expect(saveButton).toHaveFocus()
+  })
 })

@@ -14,7 +14,7 @@ describe('ErrorPanel', () => {
 
     expect(screen.getByText("error: unresolved identifier 'uniform'")).toBeInTheDocument()
     expect(
-      screen.getByText('行番号はラップ後のWGSL全体に対するものです'),
+      screen.getByText('Line numbers refer to the generated WGSL, which wraps your code.'),
     ).toBeInTheDocument()
   })
 
