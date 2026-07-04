@@ -208,4 +208,30 @@ describe('PreviewPane WebGPU integration', () => {
     expect(canvas.height).toBe(360)
     expect(onResolutionChange).toHaveBeenLastCalledWith(640, 360)
   })
+
+  it('recompiles on every shouldCompile toggle, including a second Run', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    const onCompileSuccess = vi.fn()
+    const props = {
+      code: defaultShader,
+      onCompileSuccess,
+      onCompileError: vi.fn(),
+      onFpsChange: vi.fn(),
+      onResolutionChange: vi.fn(),
+      onGpuInfo: vi.fn(),
+    }
+    const { rerender } = render(
+      <PreviewPane {...props} shouldCompile={false} />,
+    )
+
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(1))
+
+    rerender(<PreviewPane {...props} shouldCompile />)
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(2))
+
+    rerender(<PreviewPane {...props} shouldCompile={false} />)
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(3))
+    expect(onCompileSuccess).toHaveBeenCalledTimes(3)
+  })
 })

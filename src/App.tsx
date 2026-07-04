@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { EditorPane } from './components/EditorPane'
 import { Header } from './components/Header'
@@ -20,17 +20,51 @@ function App() {
   const [gpuName, setGpuName] = useState<string | undefined>('Unknown')
   const [shouldCompile, setShouldCompile] = useState(false)
 
-  const handleRun = () => {
+  const handleRun = useCallback(() => {
     setShouldCompile((current) => !current)
-  }
+  }, [])
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setCode(defaultShader)
-  }
+  }, [])
 
-  const handleSave = () => {
-    // Local download is implemented in a later phase.
-  }
+  const handleSave = useCallback(() => {
+    const blob = new Blob([code], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+
+    anchor.href = url
+    anchor.download = 'shader.wgsl'
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }, [code])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        handleRun()
+        return
+      }
+
+      if (event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        handleSave()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleRun, handleSave])
 
   return (
     <div className="app-shell">

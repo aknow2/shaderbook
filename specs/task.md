@@ -136,13 +136,13 @@
 
 ## Phase 3: CodeMirror エディター統合
 
-- [ ] **T3-1: src/editor/wgslLanguage.ts**（plan §5.2）
+- [x] **T3-1: src/editor/wgslLanguage.ts**（plan §5.2）
   - `@codemirror/legacy-modes/mode/clike` の `c` 定義をベースに
     WGSL 予約語（`fn`, `let`, `var`, `struct`, `@vertex`, `@fragment`, `@group`,
     `@binding`, `vec2f`, `vec3f`, `vec4f`, `f32`, `u32` 等）を拡張
   - DoD: WGSL コードにシンタックスハイライトが付く
 
-- [ ] **T3-2: EditorPane を CodeMirror 6 に置き換え**（plan §5.2, spec §5.3）
+- [x] **T3-2: EditorPane を CodeMirror 6 に置き換え**（plan §5.2, spec §5.3）
   - `useRef` で `EditorView` を保持し、`code` prop 変更は `dispatch` で差分同期
     （再生成しない）
   - 拡張: `lineNumbers()`, `highlightActiveLine()`, `history()` + `historyKeymap`,
@@ -154,7 +154,7 @@
 
 ## Phase 4: Run / Reset / Save 機能
 
-- [ ] **T4-1: Run 実装**（plan §4, spec §6.2）
+- [x] **T4-1: Run 実装**（plan §4, spec §6.2）
   - `App` で `setShouldCompile(prev => !prev)`（エッジトリガー、後始末なし）
   - `PreviewPane` の再コンパイルエフェクト: `isFirstRunEffectRef` で初回スキップ →
     `gpuRef.current` 存在時のみ `compile(codeRef.current)`
@@ -162,15 +162,15 @@
   - DoD: コード編集 → Run で描画が更新される。編集だけでは更新されない。
     Run 連打でも最後のコンパイル結果が勝つ
 
-- [ ] **T4-2: Reset 実装**（spec §6.3）
+- [x] **T4-2: Reset 実装**（spec §6.3）
   - 確認ダイアログなしで `code` を `defaultShader` に戻す。自動実行しない
   - DoD: Reset 押下でエディターが初期コードに戻り、プレビューは変わらない
 
-- [ ] **T4-3: Save 実装**（spec §6.4）
+- [x] **T4-3: Save 実装**（spec §6.4）
   - `Blob`（`text/plain`）+ `URL.createObjectURL` で `shader.wgsl` をダウンロード
   - DoD: Save 押下で現在のコードが `shader.wgsl` として保存される
 
-- [ ] **T4-4: キーボードショートカット**（spec §20）
+- [x] **T4-4: キーボードショートカット**（spec §20）
   - `Ctrl/Cmd + Enter` → Run、`Ctrl/Cmd + S` → Save（`preventDefault` 必須）
   - CodeMirror にフォーカスがある状態でも効くこと（keymap または window リスナー）
   - DoD: 両ショートカットがエディター内外で動作し、ブラウザの保存ダイアログが出ない

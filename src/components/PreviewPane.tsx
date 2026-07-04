@@ -218,7 +218,7 @@ export function PreviewPane({
           renderLoop?.stop()
           setPreviewMessage(deviceLostMessage)
         })
-      } catch (error) {
+      } catch {
         if (lifecycleGenerationRef.current !== myLifecycle) {
           return
         }
