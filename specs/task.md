@@ -70,25 +70,25 @@
 
 ## Phase 2: WebGPU 初期化と固定シェーダー描画
 
-- [ ] **T2-1: gpu/shaderWrapper.ts**（plan §6.4, spec §16）
+- [x] **T2-1: gpu/shaderWrapper.ts**（plan §6.4, spec §16）
   - `wrapShader({ userCode }): { wgsl }` — spec §16.3 テンプレートとの文字列結合
   - uniform 宣言は注入しない（ユーザーコード側に含める前提。plan §6.4.1）
   - バリデーション: 空コード → `Error('Shader code is empty')`、
     `mainImage` 不在 → `Error('mainImage function not found')`（spec §17）
   - DoD: 初期コードを渡すと vertex/fragment entry point 付きの完全な WGSL が返る
 
-- [ ] **T2-2: gpu/createWebGPUContext.ts**（plan §6.1, spec §10.1 手順1〜5）
+- [x] **T2-2: gpu/createWebGPUContext.ts**（plan §6.1, spec §10.1 手順1〜5）
   - `navigator.gpu` 確認 → adapter → device → canvas context → configure
   - 戻り値: `{ device, context, format, adapterInfo? }`
   - DoD: WebGPU 対応ブラウザで context が取得でき、非対応では例外が投げられる
 
-- [ ] **T2-3: gpu/createUniformBuffer.ts**（plan §6.2）
+- [x] **T2-3: gpu/createUniformBuffer.ts**（plan §6.2）
   - 16byte（`[time, padding, resolution.x, resolution.y]`）のバッファ作成
   - `updateUniforms(buffer, device, time, width, height)` 更新関数
   - DoD: WGSL の `struct Uniforms { time: f32, resolution: vec2f }` と
     レイアウトが一致する（uniform address space のアラインメント準拠）
 
-- [ ] **T2-4: gpu/createShaderPipeline.ts**（plan §6.3）
+- [x] **T2-4: gpu/createShaderPipeline.ts**（plan §6.3）
   - 入力 `{ device, format, wgsl, uniformBuffer }` → 出力 `{ pipeline, bindGroup }`（両方非 null）
   - 手順: createShaderModule → getCompilationInfo でエラー検査 →
     pushErrorScope('validation') → createRenderPipelineAsync({ layout: 'auto' }) →
@@ -99,7 +99,7 @@
   - DoD: 正常な WGSL で pipeline+bindGroup が返り、壊れた WGSL で
     エラーメッセージ付き例外が投げられる
 
-- [ ] **T2-5: gpu/renderLoop.ts**（plan §6.5）
+- [x] **T2-5: gpu/renderLoop.ts**（plan §6.5）
   - `requestAnimationFrame` ループの開始/停止関数
   - 毎フレーム: `pipeline` 非 null チェック → uniform 更新 → encoder →
     render pass → setPipeline → setBindGroup → draw(3) → submit
@@ -107,7 +107,7 @@
   - FPS カウント（0.5〜1秒ごとに `onFpsChange`。スキップフレームも含めてよい）
   - DoD: full screen triangle が描画され time でアニメーションする
 
-- [ ] **T2-6: PreviewPane への WebGPU 統合**（plan §5.3 — 本計画の中核。設計を厳守）
+- [x] **T2-6: PreviewPane への WebGPU 統合**（plan §5.3 — 本計画の中核。設計を厳守）
   - `GpuState` 判別可能 union 型（pipeline/bindGroup は常にペア）で `gpuRef` を保持
   - `lifecycleGenerationRef`（マウント世代）/ `compileSeqRef`（compile 連番）/
     `isFirstRunEffectRef` を導入
@@ -125,7 +125,7 @@
   - DoD: 起動時に初期シェーダーがアニメーション描画される。
     StrictMode の dev 環境でエラーや二重描画が起きない
 
-- [ ] **T2-7: ResizeObserver によるリサイズ追従**（plan §5.3, spec §6.6）
+- [x] **T2-7: ResizeObserver によるリサイズ追従**（plan §5.3, spec §6.6）
   - 親要素サイズ変化を検知 → `canvas.width/height` を devicePixelRatio 考慮で更新 →
     直後に `onResolutionChange(width, height)` を呼ぶ
   - T2-6 の初期化エフェクトの cleanup に `ResizeObserver.disconnect()` を組み込む

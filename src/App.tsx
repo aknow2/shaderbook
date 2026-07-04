@@ -13,13 +13,15 @@ type Resolution = {
 
 function App() {
   const [code, setCode] = useState(defaultShader)
-  const [compileStatus] = useState<CompileStatus>('idle')
-  const [fps] = useState(0)
-  const [resolution] = useState<Resolution>({ width: 0, height: 0 })
-  const [gpuName] = useState<string | undefined>('Unknown')
+  const [compileStatus, setCompileStatus] = useState<CompileStatus>('idle')
+  const [, setErrorMessage] = useState<string | null>(null)
+  const [fps, setFps] = useState(0)
+  const [resolution, setResolution] = useState<Resolution>({ width: 0, height: 0 })
+  const [gpuName, setGpuName] = useState<string | undefined>('Unknown')
+  const [shouldCompile, setShouldCompile] = useState(false)
 
   const handleRun = () => {
-    // WebGPU compilation is implemented in a later phase.
+    setShouldCompile((current) => !current)
   }
 
   const handleReset = () => {
@@ -35,7 +37,21 @@ function App() {
       <Header onRun={handleRun} onReset={handleReset} onSave={handleSave} />
       <main className="workspace" aria-label="Shader workspace">
         <EditorPane code={code} onChange={setCode} />
-        <PreviewPane />
+        <PreviewPane
+          code={code}
+          shouldCompile={shouldCompile}
+          onCompileSuccess={() => {
+            setCompileStatus('success')
+            setErrorMessage(null)
+          }}
+          onCompileError={(message) => {
+            setCompileStatus('error')
+            setErrorMessage(message)
+          }}
+          onFpsChange={setFps}
+          onResolutionChange={(width, height) => setResolution({ width, height })}
+          onGpuInfo={setGpuName}
+        />
       </main>
       <StatusBar
         compileStatus={compileStatus}
