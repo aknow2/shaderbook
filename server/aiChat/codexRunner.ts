@@ -3,14 +3,20 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AI_CHAT_SERVER_TIMEOUT_MS } from '../../src/aiChat/types.ts'
-import type { AiChatMessageRequest } from '../../src/aiChat/types.ts'
+import type { NormalizedAiChatMessageRequest } from '../../src/aiChat/types.ts'
+import {
+  getAiChatAgentBaseArgs,
+  getAiChatAgentCommand,
+  getAiChatModelArgs,
+  getAiChatPerformanceArgs,
+} from './agentConfig.ts'
 import { AiChatServerError } from './errors.ts'
-import { parseCodexOutput } from './parseCodexOutput.ts'
-import type { ParsedCodexOutput } from './parseCodexOutput.ts'
-import { buildCodexPrompt } from './promptBuilder.ts'
+import { parseAiOutput } from './parseAiOutput.ts'
+import type { ParsedAiOutput } from './parseAiOutput.ts'
+import { buildAiChatPrompt } from './promptBuilder.ts'
 import type { RequestChildProcess, RequestRegistry } from './requestRegistry.ts'
 
-export type CodexRunnerResult = ParsedCodexOutput
+export type CodexRunnerResult = ParsedAiOutput
 
 type CodexChildProcess = RequestChildProcess & {
   stdin: {
@@ -49,7 +55,7 @@ const OUTPUT_FILE_NAME = 'last-message.txt'
 const TEMP_DIRECTORY_PREFIX = 'wgslpg-ai-chat-'
 
 export async function runCodex(
-  input: AiChatMessageRequest,
+  input: NormalizedAiChatMessageRequest,
   dependencies: CodexRunnerDependencies,
 ): Promise<CodexRunnerResult> {
   const spawn = dependencies.spawn ?? (defaultSpawn as unknown as CodexSpawn)
@@ -60,18 +66,10 @@ export async function runCodex(
   let timeout: ReturnType<typeof setTimeout> | null = null
 
   try {
-    const args = [
-      'exec',
-      '--sandbox',
-      'read-only',
-      '--skip-git-repo-check',
-      '--output-last-message',
-      outputFilePath,
-      '-',
-    ]
-    const prompt = buildCodexPrompt(input)
+    const args = buildCodexArgs(input, outputFilePath)
+    const prompt = buildAiChatPrompt(input)
 
-    child = spawn('codex', args, {
+    child = spawn(getAiChatAgentCommand('codex'), args, {
       cwd: process.cwd(),
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -117,11 +115,11 @@ export async function runCodex(
         throw new AiChatServerError('CODEX_NOT_FOUND')
       }
 
-      throw new AiChatServerError('CODEX_FAILED')
+      throw new AiChatServerError('AI_AGENT_FAILED')
     }
 
     if (closeResult.code !== 0) {
-      throw new AiChatServerError('CODEX_FAILED')
+      throw new AiChatServerError('AI_AGENT_FAILED')
     }
 
     let rawOutput: string
@@ -129,10 +127,10 @@ export async function runCodex(
     try {
       rawOutput = await readFile(outputFilePath, 'utf8')
     } catch {
-      throw new AiChatServerError('INVALID_CODEX_RESPONSE')
+      throw new AiChatServerError('INVALID_AI_RESPONSE')
     }
 
-    return parseCodexOutput(rawOutput)
+    return parseAiOutput(rawOutput)
   } finally {
     if (timeout) {
       clearTimeout(timeout)
@@ -144,6 +142,19 @@ export async function runCodex(
 
     await rm(tempDirectory, { recursive: true, force: true })
   }
+}
+
+function buildCodexArgs(
+  input: NormalizedAiChatMessageRequest,
+  outputFilePath: string,
+): string[] {
+  return [
+    ...getAiChatAgentBaseArgs('codex'),
+    outputFilePath,
+    ...getAiChatModelArgs('codex', input.model),
+    ...getAiChatPerformanceArgs('codex', input.performance),
+    '-',
+  ]
 }
 
 function waitForClose(child: CodexChildProcess): Promise<{

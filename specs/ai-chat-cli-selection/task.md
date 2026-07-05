@@ -156,7 +156,7 @@
 
 ## Phase 4: Codex runner mapping 移行
 
-- [ ] **C4-1: Codex runner の selection argv mapping**（plan §7.2, §8.1, §8.3, §14 Phase 4 / spec §6.4, §11.2）
+- [x] **C4-1: Codex runner の selection argv mapping**（plan §7.2, §8.1, §8.3, §14 Phase 4 / spec §6.4, §11.2）
   - 対象ファイル:
     - 実装: `server/aiChat/codexRunner.ts`, `server/aiChat/agentConfig.ts`
     - テスト: `server/aiChat/codexRunner.test.ts`
@@ -180,7 +180,7 @@
     - 実 Codex CLI を unit test で起動しない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **C4-2: Codex runner の新 error code / cleanup / cancel 互換**（plan §7.2, §10, §13.5, §14 Phase 4 / spec §9.3, §11.3）
+- [x] **C4-2: Codex runner の新 error code / cleanup / cancel 互換**（plan §7.2, §10, §13.5, §14 Phase 4 / spec §9.3, §11.3）
   - 対象ファイル:
     - 実装: `server/aiChat/codexRunner.ts`, `server/aiChat/errors.ts`
     - テスト: `server/aiChat/codexRunner.test.ts`
