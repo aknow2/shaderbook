@@ -3,7 +3,10 @@
 import { PassThrough } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
-import type { AiChatMessageRequest } from '../../src/aiChat/types.ts'
+import type {
+  AiChatMessageRequest,
+  NormalizedAiChatMessageRequest,
+} from '../../src/aiChat/types.ts'
 import {
   AiChatServerError,
   createAiChatErrorResponse,
@@ -12,7 +15,7 @@ import {
 import { createAiChatHandler } from './handler.ts'
 import type { RequestRegistry } from './requestRegistry.ts'
 import { createRequestRegistry } from './requestRegistry.ts'
-import type { CodexRunnerResult } from './codexRunner.ts'
+import type { AiChatRunnerResult } from './aiAgentRunner.ts'
 
 type TestResponse = ServerResponse & {
   body: string
@@ -21,7 +24,7 @@ type TestResponse = ServerResponse & {
 
 type TestRequest = PassThrough & Pick<IncomingMessage, 'method' | 'url'>
 
-type RunCodexContext = {
+type RunAiChatAgentContext = {
   registry: RequestRegistry
 }
 
@@ -71,19 +74,22 @@ async function send(
     body: unknown
     method?: string
     registry?: RequestRegistry
-    runCodex?: (request: AiChatMessageRequest, context: RunCodexContext) => Promise<CodexRunnerResult>
+    runAiChatAgent?: (
+      request: NormalizedAiChatMessageRequest,
+      context: RunAiChatAgentContext,
+    ) => Promise<AiChatRunnerResult>
     rawBody?: string
   },
 ) {
   const registry = options.registry ?? createRequestRegistry()
-  const runCodex =
-    options.runCodex ??
+  const runAiChatAgent =
+    options.runAiChatAgent ??
     vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
       notes: [],
     }))
-  const handler = createAiChatHandler({ registry, runCodex })
+  const handler = createAiChatHandler({ registry, runAiChatAgent })
   const request =
     options.rawBody === undefined
       ? createJsonRequest(options.url, options.body, options.method)
@@ -95,7 +101,7 @@ async function send(
   return {
     registry,
     response,
-    runCodex,
+    runAiChatAgent,
     json: response.body ? (JSON.parse(response.body) as unknown) : null,
   }
 }
@@ -109,12 +115,22 @@ function expectInvalidRequest(response: TestResponse): void {
   })
 }
 
+function expectInvalidRequestMessage(response: TestResponse, message: string): void {
+  expect(response.statusCode).toBe(400)
+  expect(JSON.parse(response.body)).toMatchObject({
+    error: {
+      code: 'INVALID_REQUEST',
+      message,
+    },
+  })
+}
+
 describe('createAiChatHandler', () => {
   it('returns the requestId and assistant message for /messages success', async () => {
     const result = await send({
       url: '/messages',
       body: validMessageRequest(),
-      runCodex: vi.fn(async () => ({
+      runAiChatAgent: vi.fn(async () => ({
         message: '回答',
         proposedCode: 'fn main() {}',
         notes: ['補足'],
@@ -228,7 +244,7 @@ describe('createAiChatHandler', () => {
       url: '/messages',
       body: validMessageRequest(),
       registry,
-      runCodex: vi.fn(async (_request, context) => {
+      runAiChatAgent: vi.fn(async (_request, context) => {
         if (!context.registry.register('request-1', { kill: vi.fn(() => true) })) {
           throw new AiChatServerError('INVALID_REQUEST')
         }
@@ -244,12 +260,226 @@ describe('createAiChatHandler', () => {
     expectInvalidRequest(response)
   })
 
+  it('accepts agent codex for /messages', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'codex', model: 'codex-default' }),
+      runAiChatAgent,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ agent: 'codex' }),
+      expect.anything(),
+    )
+  })
+
+  it('accepts agent claude for /messages', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'claude', model: 'claude-default' }),
+      runAiChatAgent,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ agent: 'claude' }),
+      expect.anything(),
+    )
+  })
+
+  it('normalizes a request without agent to codex before calling the runner', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    await send({
+      url: '/messages',
+      body: validMessageRequest({ model: 'codex-fast' }),
+      runAiChatAgent,
+    })
+
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ agent: 'codex', model: 'codex-fast' }),
+      expect.anything(),
+    )
+  })
+
+  it('normalizes an old request without agent or model to codex and codex-default', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    await send({
+      url: '/messages',
+      body: validMessageRequest(),
+      runAiChatAgent,
+    })
+
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'codex',
+        model: 'codex-default',
+      }),
+      expect.anything(),
+    )
+  })
+
+  it('normalizes a codex request without model to codex-default', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'codex' }),
+      runAiChatAgent,
+    })
+
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ agent: 'codex', model: 'codex-default' }),
+      expect.anything(),
+    )
+  })
+
+  it('normalizes a claude request without model to claude-default', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'claude' }),
+      runAiChatAgent,
+    })
+
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ agent: 'claude', model: 'claude-default' }),
+      expect.anything(),
+    )
+  })
+
+  it('normalizes a request without performance to balanced', async () => {
+    const runAiChatAgent = vi.fn(async () => ({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+    }))
+
+    await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'claude' }),
+      runAiChatAgent,
+    })
+
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ performance: 'balanced' }),
+      expect.anything(),
+    )
+  })
+
+  it('returns 400 INVALID_REQUEST for an unsupported agent', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: { ...validMessageRequest(), agent: 'other' },
+    })
+
+    expectInvalidRequestMessage(response, 'Unsupported AI chat agent.')
+  })
+
+  it('returns 400 INVALID_REQUEST for an unsupported model', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: { ...validMessageRequest(), model: 'unknown-model' },
+    })
+
+    expectInvalidRequestMessage(response, 'Unsupported AI chat model.')
+  })
+
+  it('returns 400 INVALID_REQUEST for an unsupported performance', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: { ...validMessageRequest(), performance: 'maximum' },
+    })
+
+    expectInvalidRequestMessage(response, 'Unsupported AI chat performance.')
+  })
+
+  it('returns 400 INVALID_REQUEST for codex with a claude model', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'codex', model: 'claude-default' }),
+    })
+
+    expectInvalidRequestMessage(
+      response,
+      'AI chat model is not available for the selected agent.',
+    )
+  })
+
+  it('returns 400 INVALID_REQUEST for claude with a codex model', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'claude', model: 'codex-default' }),
+    })
+
+    expectInvalidRequestMessage(
+      response,
+      'AI chat model is not available for the selected agent.',
+    )
+  })
+
+  it('returns 400 INVALID_REQUEST when agent is omitted with a claude model', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ model: 'claude-default' }),
+    })
+
+    expectInvalidRequestMessage(
+      response,
+      'AI chat model is not available for the selected agent.',
+    )
+  })
+
   it('calls registry.cancel for /cancel', async () => {
     const registry = createRequestRegistry()
     const cancel = vi.spyOn(registry, 'cancel')
     const { response } = await send({
       url: '/cancel',
       body: { requestId: 'request-1' },
+      registry,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(cancel).toHaveBeenCalledWith('request-1')
+  })
+
+  it('calls registry.cancel for /cancel with only requestId regardless of agent fields', async () => {
+    const registry = createRequestRegistry()
+    const cancel = vi.spyOn(registry, 'cancel')
+    const { response } = await send({
+      url: '/cancel',
+      body: { requestId: 'request-1', agent: 'claude' },
       registry,
     })
 

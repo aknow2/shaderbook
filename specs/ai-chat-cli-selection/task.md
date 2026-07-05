@@ -106,7 +106,7 @@
 
 ## Phase 3: server handler と runner dispatch
 
-- [ ] **C3-1: handler の selection validation / 正規化 / 後方互換**（plan §6, §10, §13.4, §14 Phase 3 / spec §6.1, §6.2, §6.3, §9）
+- [x] **C3-1: handler の selection validation / 正規化 / 後方互換**（plan §6, §10, §13.4, §14 Phase 3 / spec §6.1, §6.2, §6.3, §9）
   - 対象ファイル:
     - 実装: `server/aiChat/handler.ts`
     - テスト: `server/aiChat/handler.test.ts`
@@ -133,7 +133,7 @@
     - requestRegistry に agent 情報を追加しない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **C3-2: runAiChatAgent dispatch と CLI mapping 定数の境界**（plan §7.1, §8, §13.5, §14 Phase 3 / spec §6.4, §11.2）
+- [x] **C3-2: runAiChatAgent dispatch と CLI mapping 定数の境界**（plan §7.1, §8, §13.5, §14 Phase 3 / spec §6.4, §11.2）
   - 対象ファイル:
     - 実装: `server/aiChat/aiAgentRunner.ts`, `server/aiChat/agentConfig.ts`
     - テスト: `server/aiChat/aiAgentRunner.test.ts`

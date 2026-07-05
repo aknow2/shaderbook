@@ -4,33 +4,35 @@ import {
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
   AI_CHAT_REQUEST_ID_MAX_LENGTH,
+  normalizeAiChatMessageRequest,
 } from '../../src/aiChat/types.ts'
 import type {
   AiChatCancelRequest,
   AiChatMessageRequest,
   ChatHistoryItem,
+  NormalizedAiChatMessageRequest,
 } from '../../src/aiChat/types.ts'
 import { AiChatServerError, writeAiChatErrorResponse } from './errors.ts'
 import { readJsonBody } from './readJsonBody.ts'
-import { runCodex as defaultRunCodex } from './codexRunner.ts'
-import type { CodexRunnerResult } from './codexRunner.ts'
+import { runAiChatAgent as defaultRunAiChatAgent } from './aiAgentRunner.ts'
+import type { AiChatRunnerResult } from './aiAgentRunner.ts'
 import type { RequestRegistry } from './requestRegistry.ts'
 
-export type RunCodexForHandler = (
-  request: AiChatMessageRequest,
+export type RunAiChatAgentForHandler = (
+  request: NormalizedAiChatMessageRequest,
   context: { registry: RequestRegistry },
-) => Promise<CodexRunnerResult>
+) => Promise<AiChatRunnerResult>
 
 export type AiChatHandlerDependencies = {
   registry: RequestRegistry
-  runCodex?: RunCodexForHandler
+  runAiChatAgent?: RunAiChatAgentForHandler
 }
 
 export function createAiChatHandler(dependencies: AiChatHandlerDependencies) {
-  const runCodex: RunCodexForHandler =
-    dependencies.runCodex ??
+  const runAiChatAgent: RunAiChatAgentForHandler =
+    dependencies.runAiChatAgent ??
     ((request, context) =>
-      defaultRunCodex(request, {
+      defaultRunAiChatAgent(request, {
         registry: context.registry,
       }))
 
@@ -48,7 +50,7 @@ export function createAiChatHandler(dependencies: AiChatHandlerDependencies) {
       const path = getRequestPath(request.url)
 
       if (path === '/messages') {
-        await handleMessages(request, response, dependencies.registry, runCodex)
+        await handleMessages(request, response, dependencies.registry, runAiChatAgent)
         return
       }
 
@@ -73,7 +75,7 @@ async function handleMessages(
   request: IncomingMessage,
   response: ServerResponse,
   registry: RequestRegistry,
-  runCodex: RunCodexForHandler,
+  runAiChatAgent: RunAiChatAgentForHandler,
 ): Promise<void> {
   const body = await readJsonBody(request)
 
@@ -81,10 +83,11 @@ async function handleMessages(
     throw new AiChatServerError('INVALID_REQUEST')
   }
 
-  const result = await runCodex(body, { registry })
+  const normalizedRequest = normalizeMessageRequest(body)
+  const result = await runAiChatAgent(normalizedRequest, { registry })
 
   writeJson(response, 200, {
-    requestId: body.requestId,
+    requestId: normalizedRequest.requestId,
     message: {
       role: 'assistant',
       content: result.message,
@@ -92,6 +95,20 @@ async function handleMessages(
       notes: result.notes,
     },
   })
+}
+
+function normalizeMessageRequest(
+  request: AiChatMessageRequest,
+): NormalizedAiChatMessageRequest {
+  try {
+    return normalizeAiChatMessageRequest(request)
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new AiChatServerError('INVALID_REQUEST', error.message)
+    }
+
+    throw new AiChatServerError('INVALID_REQUEST')
+  }
 }
 
 async function handleCancel(
