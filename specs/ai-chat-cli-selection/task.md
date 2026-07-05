@@ -327,7 +327,7 @@
 
 ## Phase 7: 回帰確認
 
-- [ ] **C7-1: 全自動テスト / typecheck / lint**（plan §16, §14 Phase 7 / spec §16, §17）
+- [x] **C7-1: 全自動テスト / typecheck / lint**（plan §16, §14 Phase 7 / spec §16, §17）
   - 対象ファイル:
     - 実装: なし（検証のみ）
     - テスト: 全テスト
