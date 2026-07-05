@@ -258,7 +258,7 @@
 
 ## Phase 6: ChatPanel UI
 
-- [ ] **C6-1: Agent / Model / Performance control と state helper**（plan §4, §5, §13.3, §14 Phase 6 / spec §7.1, §7.2, §13）
+- [x] **C6-1: Agent / Model / Performance control と state helper**（plan §4, §5, §13.3, §14 Phase 6 / spec §7.1, §7.2, §13）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`, `src/aiChat/state.ts`, `src/App.css`
     - テスト: `src/components/ChatPanel.test.tsx`, `src/aiChat/state.test.ts`
@@ -280,7 +280,7 @@
     - 狭い幅で control 行が破綻しない CSS が `src/App.css` に追加されている
     - 既存の開閉、入力、Apply、Cancel 表示を壊さない
 
-- [ ] **C6-2: 送信 payload の selection 固定と activeRequestAgent 表示**（plan §4, §5, §13.3, §14 Phase 6 / spec §7.2, §8, §9）
+- [x] **C6-2: 送信 payload の selection 固定と activeRequestAgent 表示**（plan §4, §5, §13.3, §14 Phase 6 / spec §7.2, §8, §9）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`, `src/aiChat/state.ts`
     - テスト: `src/components/ChatPanel.test.tsx`
@@ -301,7 +301,7 @@
     - cancel は送信時点 selection や現在の UI selection に依存せず、agent 非依存の `requestId` cancel として維持されている
     - 既存の多重送信防止、送信中に閉じても request 継続、成功時だけ入力欄 clear を維持する
 
-- [ ] **C6-3: agent 非依存 error 表示と既存 UI 回帰維持**（plan §11, §13.3, §14 Phase 6 / spec §7.3, §8.7, §13）
+- [x] **C6-3: agent 非依存 error 表示と既存 UI 回帰維持**（plan §11, §13.3, §14 Phase 6 / spec §7.3, §8.7, §13）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`, `src/aiChat/client.ts`
     - テスト: `src/components/ChatPanel.test.tsx`, `src/aiChat/client.test.ts`

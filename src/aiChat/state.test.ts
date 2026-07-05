@@ -24,6 +24,7 @@ import {
   createChatHistory,
   createInitialSelectedModelByAgent,
   switchAiChatAgent,
+  updateSelectedAiChatModelForAgent,
   validateAiChatDraft,
   validateAiChatMessageText,
 } from './state'
@@ -200,6 +201,15 @@ describe('AI chat selection shared contract', () => {
         claude: 'claude-default',
       },
       selectedPerformance: 'deep',
+    })
+  })
+
+  it('updates only the selected model for the requested agent', () => {
+    expect(
+      updateSelectedAiChatModelForAgent(createInitialSelectedModelByAgent(), 'claude', 'claude-deep'),
+    ).toEqual({
+      codex: 'codex-default',
+      claude: 'claude-deep',
     })
   })
 })

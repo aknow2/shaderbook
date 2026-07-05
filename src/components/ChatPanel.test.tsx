@@ -42,6 +42,22 @@ function getSendButton() {
   return screen.getByRole('button', { name: 'Send AI chat message' })
 }
 
+function getSettings() {
+  return screen.getByLabelText('AI chat settings')
+}
+
+function getAgentSelect() {
+  return within(getSettings()).getByLabelText('Agent') as HTMLSelectElement
+}
+
+function getModelSelect() {
+  return within(getSettings()).getByLabelText('Model') as HTMLSelectElement
+}
+
+function getPerformanceSelect() {
+  return within(getSettings()).getByLabelText('Performance') as HTMLSelectElement
+}
+
 function getToggleButton() {
   const button = screen.getByRole('button', { expanded: true }) ?? screen.getByRole('button', { expanded: false })
   return button
@@ -90,6 +106,67 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('heading', { name: 'AI Chat' })).toBeInTheDocument()
     expect(getInput()).toBeInTheDocument()
     expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument()
+  })
+
+  it('初期表示で Agent / Model / Performance controls が既定値を表示する', () => {
+    renderPanel()
+
+    expect(getSettings()).toHaveClass('chat-controls')
+    expect(getAgentSelect()).toHaveValue('codex')
+    expect(getAgentSelect().selectedOptions[0]).toHaveTextContent('Codex CLI')
+    expect(getModelSelect()).toHaveValue('codex-default')
+    expect(getModelSelect().selectedOptions[0]).toHaveTextContent('Default')
+    expect(getPerformanceSelect()).toHaveValue('balanced')
+    expect(getPerformanceSelect().selectedOptions[0]).toHaveTextContent('Balanced')
+  })
+
+  it('Agent select に Codex CLI / Claude CLI が表示される', () => {
+    renderPanel()
+
+    expect(within(getAgentSelect()).getByRole('option', { name: 'Codex CLI' })).toBeInTheDocument()
+    expect(within(getAgentSelect()).getByRole('option', { name: 'Claude CLI' })).toBeInTheDocument()
+  })
+
+  it('Model select は選択中 agent の model 候補だけを表示する', () => {
+    renderPanel()
+
+    expect(Array.from(getModelSelect().options).map((option) => option.value)).toEqual([
+      'codex-default',
+      'codex-fast',
+      'codex-deep',
+    ])
+
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+
+    expect(Array.from(getModelSelect().options).map((option) => option.value)).toEqual([
+      'claude-default',
+      'claude-fast',
+      'claude-deep',
+    ])
+    expect(getModelSelect()).toHaveValue('claude-default')
+  })
+
+  it('agent ごとの model 選択を保持し、Performance は agent 切り替えで維持する', () => {
+    renderPanel()
+
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'deep' } })
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
+    fireEvent.change(getAgentSelect(), { target: { value: 'codex' } })
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+
+    expect(getModelSelect()).toHaveValue('claude-deep')
+    expect(getPerformanceSelect()).toHaveValue('deep')
+  })
+
+  it('Performance select に Fast / Balanced / Deep が表示される', () => {
+    renderPanel()
+
+    expect(Array.from(getPerformanceSelect().options).map((option) => option.textContent)).toEqual([
+      'Fast',
+      'Balanced',
+      'Deep',
+    ])
   })
 
   it('開閉しても messages が残る', async () => {
@@ -210,6 +287,9 @@ describe('ChatPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Codex is thinking...')).toBeInTheDocument())
     expect(getSendButton()).toBeDisabled()
+    expect(getAgentSelect()).not.toBeDisabled()
+    expect(getModelSelect()).not.toBeDisabled()
+    expect(getPerformanceSelect()).not.toBeDisabled()
     expect(screen.getByRole('button', { name: 'Cancel AI chat request' })).toBeInTheDocument()
   })
 
@@ -274,6 +354,64 @@ describe('ChatPanel', () => {
     expect(payload.history.at(-1)).toEqual({ role: 'assistant', content: 'ok', proposedCode: null })
   })
 
+  it('Codex 選択中の送信 payload に agent / model / performance が含まれる', async () => {
+    mockSuccessfulSend('ok')
+    renderPanel()
+
+    submitMessage('codex payload')
+    await waitFor(() => expect(sendAiChatMessageMock).toHaveBeenCalledTimes(1))
+    const payload = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
+
+    expect(payload).toMatchObject({
+      agent: 'codex',
+      model: 'codex-default',
+      performance: 'balanced',
+    })
+  })
+
+  it('Claude 選択中の送信 payload に agent / model / performance が含まれる', async () => {
+    mockSuccessfulSend('ok')
+    renderPanel()
+
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'fast' } })
+    submitMessage('claude payload')
+    await waitFor(() => expect(sendAiChatMessageMock).toHaveBeenCalledTimes(1))
+    const payload = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
+
+    expect(payload).toMatchObject({
+      agent: 'claude',
+      model: 'claude-deep',
+      performance: 'fast',
+    })
+  })
+
+  it('送信中に controls を変更しても payload と thinking 表示は送信時点 selection のまま', async () => {
+    const deferred = createDeferred<AiChatMessageResponse>()
+    sendAiChatMessageMock.mockReturnValue(deferred.promise)
+    renderPanel()
+
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'deep' } })
+    submitMessage('fixed snapshot')
+    await waitFor(() => expect(screen.getByText('Claude is thinking...')).toBeInTheDocument())
+
+    fireEvent.change(getAgentSelect(), { target: { value: 'codex' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'codex-fast' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'fast' } })
+
+    const payload = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
+    expect(payload).toMatchObject({
+      agent: 'claude',
+      model: 'claude-deep',
+      performance: 'deep',
+    })
+    expect(screen.getByText('Claude is thinking...')).toBeInTheDocument()
+    expect(screen.queryByText('Codex is thinking...')).not.toBeInTheDocument()
+  })
+
   it('失敗時に Error message が表示される', async () => {
     sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('AI chat request failed.'))
     renderPanel()
@@ -304,22 +442,51 @@ describe('ChatPanel', () => {
     expect(await screen.findByText('Codex CLI is not installed or not found in PATH.')).toBeInTheDocument()
   })
 
-  it('`TIMEOUT` で `Codex request timed out.` が表示される', async () => {
-    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('Codex request timed out.'))
+  it('`CLAUDE_NOT_FOUND` で `Claude CLI is not installed or not found in PATH.` が表示される', async () => {
+    sendAiChatMessageMock.mockRejectedValue(
+      new MockAiChatClientError('Claude CLI is not installed or not found in PATH.'),
+    )
     renderPanel()
 
     submitMessage('fail')
 
-    expect(await screen.findByText('Codex request timed out.')).toBeInTheDocument()
+    expect(await screen.findByText('Claude CLI is not installed or not found in PATH.')).toBeInTheDocument()
   })
 
-  it('`INVALID_CODEX_RESPONSE` で `Codex returned an invalid response.` が表示される', async () => {
-    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('Codex returned an invalid response.'))
+  it('`TIMEOUT` で `AI chat request timed out.` が表示される', async () => {
+    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('AI chat request timed out.'))
     renderPanel()
 
     submitMessage('fail')
 
-    expect(await screen.findByText('Codex returned an invalid response.')).toBeInTheDocument()
+    expect(await screen.findByText('AI chat request timed out.')).toBeInTheDocument()
+  })
+
+  it('`INVALID_AI_RESPONSE` で `AI returned an invalid response.` が表示される', async () => {
+    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('AI returned an invalid response.'))
+    renderPanel()
+
+    submitMessage('fail')
+
+    expect(await screen.findByText('AI returned an invalid response.')).toBeInTheDocument()
+  })
+
+  it('`INVALID_CODEX_RESPONSE` で `AI returned an invalid response.` が表示される', async () => {
+    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('AI returned an invalid response.'))
+    renderPanel()
+
+    submitMessage('fail')
+
+    expect(await screen.findByText('AI returned an invalid response.')).toBeInTheDocument()
+  })
+
+  it('`AI_AGENT_FAILED` と旧 `CODEX_FAILED` は `AI chat request failed.` が表示される', async () => {
+    sendAiChatMessageMock.mockRejectedValue(new MockAiChatClientError('AI chat request failed.'))
+    renderPanel()
+
+    submitMessage('fail')
+
+    expect(await screen.findByText('AI chat request failed.')).toBeInTheDocument()
   })
 
   it('fetch reject で `AI chat server is not running.` が表示される', async () => {

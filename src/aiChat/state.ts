@@ -126,6 +126,17 @@ export function switchAiChatAgent(
   }
 }
 
+export function updateSelectedAiChatModelForAgent<TAgent extends AiChatAgent>(
+  selectedModelByAgent: SelectedModelByAgent,
+  agent: TAgent,
+  model: SelectedModelByAgent[TAgent],
+): SelectedModelByAgent {
+  return {
+    ...selectedModelByAgent,
+    [agent]: model,
+  }
+}
+
 export function createAiChatId(): string {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
     return globalThis.crypto.randomUUID()

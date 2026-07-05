@@ -3,10 +3,23 @@ import { AiChatClientError, cancelAiChatRequest, sendAiChatMessage } from '../ai
 import {
   createAiChatId,
   createChatHistory,
+  createInitialSelectedModelByAgent,
+  switchAiChatAgent,
+  updateSelectedAiChatModelForAgent,
   validateAiChatDraft,
   validateAiChatMessageText,
   type ChatMessage,
+  type SelectedModelByAgent,
 } from '../aiChat/state'
+import {
+  AI_CHAT_AGENT_OPTIONS,
+  AI_CHAT_DEFAULT_AGENT,
+  AI_CHAT_DEFAULT_PERFORMANCE,
+  AI_CHAT_MODEL_OPTIONS_BY_AGENT,
+  AI_CHAT_PERFORMANCE_OPTIONS,
+  type AiChatAgent,
+  type AiChatPerformance,
+} from '../aiChat/types'
 
 export type ChatPanelProps = {
   code: string
@@ -19,11 +32,18 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
+  const [activeRequestAgent, setActiveRequestAgent] = useState<AiChatAgent | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<AiChatAgent>(AI_CHAT_DEFAULT_AGENT)
+  const [selectedModelByAgent, setSelectedModelByAgent] = useState(createInitialSelectedModelByAgent)
+  const [selectedPerformance, setSelectedPerformance] = useState<AiChatPerformance>(
+    AI_CHAT_DEFAULT_PERFORMANCE,
+  )
   const isSendingRef = useRef(false)
 
   const messageValidation = useMemo(() => validateAiChatMessageText(inputValue), [inputValue])
   const shouldShowInputError = inputValue.trim().length > 0 && messageValidation.errorMessage === 'Message is too long.'
   const canSend = messageValidation.canSend && !isSending
+  const selectedModel = selectedModelByAgent[selectedAgent]
 
   const appendMessage = (message: Omit<ChatMessage, 'id' | 'createdAt'>) => {
     setMessages((current) => [
@@ -68,10 +88,16 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
     const messageAtSubmit = inputValue
     const codeAtSubmit = code
     const historyAtSubmit = createChatHistory(messages)
+    const selectionAtSubmit = {
+      agent: selectedAgent,
+      model: selectedModel,
+      performance: selectedPerformance,
+    }
 
     isSendingRef.current = true
     setIsSending(true)
     setActiveRequestId(requestId)
+    setActiveRequestAgent(selectionAtSubmit.agent)
     appendMessage({
       role: 'user',
       content: messageAtSubmit,
@@ -86,6 +112,9 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
         message: messageAtSubmit,
         code: codeAtSubmit,
         history: historyAtSubmit,
+        agent: selectionAtSubmit.agent,
+        model: selectionAtSubmit.model,
+        performance: selectionAtSubmit.performance,
       })
 
       appendMessage({
@@ -102,6 +131,7 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
       isSendingRef.current = false
       setIsSending(false)
       setActiveRequestId(null)
+      setActiveRequestAgent(null)
     }
   }
 
@@ -184,7 +214,72 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
                 ) : null}
               </article>
             ))}
-            {isSending ? <div className="chat-thinking">Codex is thinking...</div> : null}
+            {isSending && activeRequestAgent ? (
+              <div className="chat-thinking">{getThinkingLabel(activeRequestAgent)}</div>
+            ) : null}
+          </div>
+          <div className="chat-controls" aria-label="AI chat settings">
+            <label>
+              Agent
+              <select
+                aria-label="Agent"
+                value={selectedAgent}
+                onChange={(event) => {
+                  const nextAgent = event.currentTarget.value as AiChatAgent
+                  setSelectedAgent((currentAgent) =>
+                    switchAiChatAgent(
+                      {
+                        selectedAgent: currentAgent,
+                        selectedModelByAgent,
+                        selectedPerformance,
+                      },
+                      nextAgent,
+                    ).selectedAgent,
+                  )
+                }}
+              >
+                {AI_CHAT_AGENT_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Model
+              <select
+                aria-label="Model"
+                value={selectedModel}
+                onChange={(event) => {
+                  const nextModel = event.currentTarget.value as SelectedModelByAgent[typeof selectedAgent]
+                  setSelectedModelByAgent((current) =>
+                    updateSelectedAiChatModelForAgent(current, selectedAgent, nextModel),
+                  )
+                }}
+              >
+                {AI_CHAT_MODEL_OPTIONS_BY_AGENT[selectedAgent].map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Performance
+              <select
+                aria-label="Performance"
+                value={selectedPerformance}
+                onChange={(event) => {
+                  setSelectedPerformance(event.currentTarget.value as AiChatPerformance)
+                }}
+              >
+                {AI_CHAT_PERFORMANCE_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <form
             className="chat-input-row"
@@ -263,5 +358,14 @@ function getRoleLabel(role: ChatMessage['role']): string {
       return 'Error'
     case 'user':
       return 'You'
+  }
+}
+
+function getThinkingLabel(agent: AiChatAgent): string {
+  switch (agent) {
+    case 'claude':
+      return 'Claude is thinking...'
+    case 'codex':
+      return 'Codex is thinking...'
   }
 }
