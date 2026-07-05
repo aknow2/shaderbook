@@ -249,7 +249,7 @@
 
 ## Phase 5: ChatPanel UI
 
-- [ ] **A5-1: ChatPanel の開閉・入力・送信制御**（plan §10, §12, §15.3, §16 Phase 5 / spec §7.2, §7.4, §7.5, §13, §15, §16）
+- [x] **A5-1: ChatPanel の開閉・入力・送信制御**（plan §10, §12, §15.3, §16 Phase 5 / spec §7.2, §7.4, §7.5, §13, §15, §16）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`
     - テスト: `src/components/ChatPanel.test.tsx`
@@ -275,7 +275,7 @@
     - チャット入力欄の `Ctrl+Enter` / `Meta+Enter` は textarea 側で `preventDefault` と `stopPropagation` を行う
     - spec §13 の aria 要件として textarea に `aria-label="AI chat message"`、送信ボタンに `aria-label="Send AI chat message"`、開閉ボタンに `aria-expanded`、送信中表示を含む領域に `aria-live="polite"` がある
 
-- [ ] **A5-2: ChatPanel messages / cancel / error 表示**（plan §10, §12, §13, §15.3, §16 Phase 5 / spec §7.3, §7.5, §8.7, §15, §16）
+- [x] **A5-2: ChatPanel messages / cancel / error 表示**（plan §10, §12, §13, §15.3, §16 Phase 5 / spec §7.3, §7.5, §8.7, §15, §16）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`
     - テスト: `src/components/ChatPanel.test.tsx`
@@ -300,7 +300,7 @@
     - `Codex is thinking...` は `aria-live="polite"` の領域内に表示される
     - spec §13 の aria 要件としてキャンセルボタンに `aria-label="Cancel AI chat request"` がある
 
-- [ ] **A5-3: proposedCode / Apply / CSS 仕上げ**（plan §12, §14, §15.3, §16 Phase 5 / spec §7.3, §7.6, §13, §15, §16）
+- [x] **A5-3: proposedCode / Apply / CSS 仕上げ**（plan §12, §14, §15.3, §16 Phase 5 / spec §7.3, §7.6, §13, §15, §16）
   - 対象ファイル:
     - 実装: `src/components/ChatPanel.tsx`, `src/App.css`
     - テスト: `src/components/ChatPanel.test.tsx`
