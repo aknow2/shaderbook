@@ -94,7 +94,7 @@
 
 ## Phase 2: Codex runner と HTTP handler
 
-- [ ] **A2-1: codexRunner の spawn / stdin / cleanup**（plan §6, §15.6, §16 Phase 2 / spec §10.1, §10.3, §11.2, §15, §16）
+- [x] **A2-1: codexRunner の spawn / stdin / cleanup**（plan §6, §15.6, §16 Phase 2 / spec §10.1, §10.3, §11.2, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/codexRunner.ts`
     - テスト: `server/aiChat/codexRunner.test.ts`
@@ -117,7 +117,7 @@
     - 実 Codex CLI を unit test で起動しない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **A2-2: codexRunner の timeout / cancel / error mapping**（plan §6, §7, §15.6, §16 Phase 2 / spec §9.3, §10.3, §15, §16）
+- [x] **A2-2: codexRunner の timeout / cancel / error mapping**（plan §6, §7, §15.6, §16 Phase 2 / spec §9.3, §10.3, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/codexRunner.ts`
     - テスト: `server/aiChat/codexRunner.test.ts`
@@ -139,7 +139,7 @@
     - Codex CLI 未インストール、失敗終了、不正 JSON、timeout、cancel を handler が HTTP error response へ変換できる error として表現する
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **A2-3: HTTP body parse / handler routing**（plan §5, §15.6, §16 Phase 2 / spec §9, §15, §16）
+- [x] **A2-3: HTTP body parse / handler routing**（plan §5, §15.6, §16 Phase 2 / spec §9, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/readJsonBody.ts`, `server/aiChat/handler.ts`
     - テスト: `server/aiChat/handler.test.ts`
