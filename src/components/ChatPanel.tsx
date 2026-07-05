@@ -4,30 +4,33 @@ import {
   createAiChatId,
   createChatHistory,
   createInitialSelectedModelByAgent,
+  createInitialSelectedPerformanceByAgent,
   switchAiChatAgent,
   updateSelectedAiChatModelForAgent,
+  updateSelectedAiChatPerformanceForAgent,
   validateAiChatDraft,
   validateAiChatMessageText,
   type ChatMessage,
   type SelectedModelByAgent,
+  type SelectedPerformanceByAgent,
 } from '../aiChat/state'
 import {
   AI_CHAT_AGENT_OPTIONS,
   AI_CHAT_DEFAULT_AGENT,
-  AI_CHAT_DEFAULT_PERFORMANCE,
   AI_CHAT_MODEL_OPTIONS_BY_AGENT,
-  AI_CHAT_PERFORMANCE_OPTIONS,
+  AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT,
   type AiChatAgent,
-  type AiChatPerformance,
 } from '../aiChat/types'
 
 export type ChatPanelProps = {
   code: string
+  isOpen?: boolean
+  onOpenChange?: (isOpen: boolean) => void
   onApplyCode: (code: string) => void
 }
 
-export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
-  const [isChatOpen, setIsChatOpen] = useState(true)
+export function ChatPanel({ code, isOpen, onOpenChange, onApplyCode }: ChatPanelProps) {
+  const [uncontrolledIsChatOpen, setUncontrolledIsChatOpen] = useState(true)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -35,15 +38,25 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
   const [activeRequestAgent, setActiveRequestAgent] = useState<AiChatAgent | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<AiChatAgent>(AI_CHAT_DEFAULT_AGENT)
   const [selectedModelByAgent, setSelectedModelByAgent] = useState(createInitialSelectedModelByAgent)
-  const [selectedPerformance, setSelectedPerformance] = useState<AiChatPerformance>(
-    AI_CHAT_DEFAULT_PERFORMANCE,
+  const [selectedPerformanceByAgent, setSelectedPerformanceByAgent] = useState(
+    createInitialSelectedPerformanceByAgent,
   )
   const isSendingRef = useRef(false)
 
   const messageValidation = useMemo(() => validateAiChatMessageText(inputValue), [inputValue])
   const shouldShowInputError = inputValue.trim().length > 0 && messageValidation.errorMessage === 'Message is too long.'
   const canSend = messageValidation.canSend && !isSending
+  const isChatOpen = isOpen ?? uncontrolledIsChatOpen
   const selectedModel = selectedModelByAgent[selectedAgent]
+  const selectedPerformance = selectedPerformanceByAgent[selectedAgent]
+
+  const setChatOpen = (nextIsOpen: boolean) => {
+    if (isOpen === undefined) {
+      setUncontrolledIsChatOpen(nextIsOpen)
+    }
+
+    onOpenChange?.(nextIsOpen)
+  }
 
   const appendMessage = (message: Omit<ChatMessage, 'id' | 'createdAt'>) => {
     setMessages((current) => [
@@ -169,7 +182,7 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
           type="button"
           className="control-button"
           aria-expanded={isChatOpen}
-          onClick={() => setIsChatOpen((current) => !current)}
+          onClick={() => setChatOpen(!isChatOpen)}
         >
           {isChatOpen ? 'Hide' : 'Show'}
         </button>
@@ -231,7 +244,7 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
                       {
                         selectedAgent: currentAgent,
                         selectedModelByAgent,
-                        selectedPerformance,
+                        selectedPerformanceByAgent,
                       },
                       nextAgent,
                     ).selectedAgent,
@@ -270,10 +283,18 @@ export function ChatPanel({ code, onApplyCode }: ChatPanelProps) {
                 aria-label="Performance"
                 value={selectedPerformance}
                 onChange={(event) => {
-                  setSelectedPerformance(event.currentTarget.value as AiChatPerformance)
+                  const nextPerformance = event.currentTarget
+                    .value as SelectedPerformanceByAgent[typeof selectedAgent]
+                  setSelectedPerformanceByAgent((current) =>
+                    updateSelectedAiChatPerformanceForAgent(
+                      current,
+                      selectedAgent,
+                      nextPerformance,
+                    ),
+                  )
                 }}
               >
-                {AI_CHAT_PERFORMANCE_OPTIONS.map((option) => (
+                {AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT[selectedAgent].map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>

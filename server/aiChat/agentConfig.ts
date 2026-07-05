@@ -6,30 +6,39 @@ import type {
 import { AiChatServerError } from './errors.ts'
 
 export const CODEX_MODEL_CLI_VALUES = {
-  'codex-fast': 'gpt-5-mini',
-  'codex-deep': 'gpt-5',
+  'gpt-5.5': 'gpt-5.5',
+  'gpt-5.4': 'gpt-5.4',
+  'gpt-5.4-mini': 'gpt-5.4-mini',
+  'gpt-5.3-codex-spark': 'gpt-5.3-codex-spark',
 } as const
 
 export const CLAUDE_MODEL_CLI_VALUES = {
-  'claude-fast': 'claude-sonnet',
-  'claude-deep': 'claude-opus',
+  sonnet: 'sonnet',
+  fable: 'fable',
+  opus: 'opus',
+  haiku: 'haiku',
 } as const
 
 export const CODEX_PERFORMANCE_CLI_VALUES = {
-  fast: 'model_reasoning_effort="low"',
-  deep: 'model_reasoning_effort="high"',
+  low: 'model_reasoning_effort="low"',
+  medium: 'model_reasoning_effort="medium"',
+  high: 'model_reasoning_effort="high"',
+  xhigh: 'model_reasoning_effort="xhigh"',
 } as const
 
 export const CLAUDE_PERFORMANCE_CLI_VALUES = {
-  fast: 'low',
-  deep: 'high',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  xhigh: 'xhigh',
+  max: 'max',
 } as const
 
 type AgentCliConfig = {
   command: string
   baseArgs: readonly string[]
   modelArgs: Partial<Record<AiChatModel, readonly string[]>>
-  performanceArgs: Record<AiChatPerformance, readonly string[]>
+  performanceArgs: Partial<Record<AiChatPerformance, readonly string[]>>
 }
 
 export const AI_CHAT_AGENT_CLI_CONFIG = {
@@ -43,14 +52,19 @@ export const AI_CHAT_AGENT_CLI_CONFIG = {
       '--output-last-message',
     ],
     modelArgs: {
-      'codex-default': [],
-      'codex-fast': ['--model', CODEX_MODEL_CLI_VALUES['codex-fast']],
-      'codex-deep': ['--model', CODEX_MODEL_CLI_VALUES['codex-deep']],
+      'gpt-5.5': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.5']],
+      'gpt-5.4': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4']],
+      'gpt-5.4-mini': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4-mini']],
+      'gpt-5.3-codex-spark': [
+        '--model',
+        CODEX_MODEL_CLI_VALUES['gpt-5.3-codex-spark'],
+      ],
     },
     performanceArgs: {
-      fast: ['--config', CODEX_PERFORMANCE_CLI_VALUES.fast],
-      balanced: [],
-      deep: ['--config', CODEX_PERFORMANCE_CLI_VALUES.deep],
+      low: ['--config', CODEX_PERFORMANCE_CLI_VALUES.low],
+      medium: ['--config', CODEX_PERFORMANCE_CLI_VALUES.medium],
+      high: ['--config', CODEX_PERFORMANCE_CLI_VALUES.high],
+      xhigh: ['--config', CODEX_PERFORMANCE_CLI_VALUES.xhigh],
     },
   },
   claude: {
@@ -66,13 +80,18 @@ export const AI_CHAT_AGENT_CLI_CONFIG = {
     ],
     modelArgs: {
       'claude-default': [],
-      'claude-fast': ['--model', CLAUDE_MODEL_CLI_VALUES['claude-fast']],
-      'claude-deep': ['--model', CLAUDE_MODEL_CLI_VALUES['claude-deep']],
+      sonnet: ['--model', CLAUDE_MODEL_CLI_VALUES.sonnet],
+      fable: ['--model', CLAUDE_MODEL_CLI_VALUES.fable],
+      opus: ['--model', CLAUDE_MODEL_CLI_VALUES.opus],
+      haiku: ['--model', CLAUDE_MODEL_CLI_VALUES.haiku],
     },
     performanceArgs: {
-      fast: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.fast],
-      balanced: [],
-      deep: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.deep],
+      default: [],
+      low: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.low],
+      medium: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.medium],
+      high: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.high],
+      xhigh: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.xhigh],
+      max: ['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.max],
     },
   },
 } as const satisfies Record<AiChatAgent, AgentCliConfig>

@@ -77,8 +77,8 @@ describe('buildAiChatPrompt', () => {
           role: 'user',
           content: 'Previous question',
           agent: 'claude',
-          model: 'claude-deep',
-          performance: 'deep',
+          model: 'opus',
+          performance: 'max',
         } as ChatHistoryItem,
       ],
     })
@@ -87,7 +87,7 @@ describe('buildAiChatPrompt', () => {
     expect(prompt).not.toContain('agent')
     expect(prompt).not.toContain('model')
     expect(prompt).not.toContain('performance')
-    expect(prompt).not.toContain('claude-deep')
+    expect(prompt).not.toContain('opus')
   })
 
   it('includes a no-history marker when history is empty', () => {

@@ -1,4 +1,4 @@
-# WGSL Shader Playground AIチャット機能 仕様書
+# Shaderbook AIチャット機能 仕様書
 
 ## 1. 概要
 
@@ -147,7 +147,7 @@ AIチャットパネルは、既存のエディター列内で `EditorPane` と 
 
 ```text
 +--------------------------------------------------------------------------------+
-| WGSL Playground                                      Run   Reset   Save          |
+| Shaderbook                                      Run   Reset   Save          |
 +--------------------------------------+-----------------------------------------+
 | Editor Column                        | Preview                                 |
 |                                      |                                         |

@@ -8,7 +8,7 @@ import {
   type KeyBinding,
 } from '@codemirror/view'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { wgslLanguage } from '../editor/wgslLanguage'
 
 export type EditorPaneProps = {
@@ -58,6 +58,7 @@ const editorTheme = EditorView.theme(
 const runShortcutKeymap: readonly KeyBinding[] = [{ key: 'Mod-Enter', run: () => true }]
 
 export function EditorPane({ code, onChange }: EditorPaneProps) {
+  const [isEditorOpen, setIsEditorOpen] = useState(true)
   const editorHostRef = useRef<HTMLDivElement | null>(null)
   const editorViewRef = useRef<EditorView | null>(null)
   const initialCodeRef = useRef(code)
@@ -134,21 +135,35 @@ export function EditorPane({ code, onChange }: EditorPaneProps) {
   }, [code])
 
   return (
-    <section className="panel editor-pane" aria-labelledby="editor-title">
+    <section
+      className={isEditorOpen ? 'panel editor-pane' : 'panel editor-pane editor-pane-collapsed'}
+      aria-labelledby="editor-title"
+    >
       <div className="panel-header">
         <h2 id="editor-title">Editor</h2>
-      </div>
-      <div className="file-tabs" aria-label="Open shader files">
         <button
           type="button"
-          className="file-tab"
-          aria-label="Open shader file shader.wgsl"
-          aria-current="page"
+          className="control-button"
+          aria-controls="editor-content"
+          aria-expanded={isEditorOpen}
+          onClick={() => setIsEditorOpen((current) => !current)}
         >
-          shader.wgsl
+          {isEditorOpen ? 'Hide' : 'Show'}
         </button>
       </div>
-      <div ref={editorHostRef} className="shader-editor" />
+      <div id="editor-content" className="editor-pane-body" hidden={!isEditorOpen}>
+        <div className="file-tabs" aria-label="Open shader files">
+          <button
+            type="button"
+            className="file-tab"
+            aria-label="Open shader file shader.wgsl"
+            aria-current="page"
+          >
+            shader.wgsl
+          </button>
+        </div>
+        <div ref={editorHostRef} className="shader-editor" />
+      </div>
     </section>
   )
 }

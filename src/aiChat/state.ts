@@ -1,14 +1,16 @@
 import {
   AI_CHAT_CODE_MAX_LENGTH,
   AI_CHAT_DEFAULT_MODEL_BY_AGENT,
+  AI_CHAT_DEFAULT_PERFORMANCE_BY_AGENT,
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
 } from './types'
 import type {
   AiChatAgent,
   AiChatCodexModel,
+  AiChatCodexPerformance,
   AiChatClaudeModel,
-  AiChatPerformance,
+  AiChatClaudePerformance,
   ChatHistoryItem,
 } from './types'
 
@@ -37,10 +39,15 @@ export type SelectedModelByAgent = {
   claude: AiChatClaudeModel
 }
 
+export type SelectedPerformanceByAgent = {
+  codex: AiChatCodexPerformance
+  claude: AiChatClaudePerformance
+}
+
 export type AiChatSelectionState = {
   selectedAgent: AiChatAgent
   selectedModelByAgent: SelectedModelByAgent
-  selectedPerformance: AiChatPerformance
+  selectedPerformanceByAgent: SelectedPerformanceByAgent
 }
 
 const VALID_RESULT: AiChatValidationResult = {
@@ -116,6 +123,13 @@ export function createInitialSelectedModelByAgent(): SelectedModelByAgent {
   }
 }
 
+export function createInitialSelectedPerformanceByAgent(): SelectedPerformanceByAgent {
+  return {
+    codex: AI_CHAT_DEFAULT_PERFORMANCE_BY_AGENT.codex,
+    claude: AI_CHAT_DEFAULT_PERFORMANCE_BY_AGENT.claude,
+  }
+}
+
 export function switchAiChatAgent(
   state: AiChatSelectionState,
   nextAgent: AiChatAgent,
@@ -134,6 +148,17 @@ export function updateSelectedAiChatModelForAgent<TAgent extends AiChatAgent>(
   return {
     ...selectedModelByAgent,
     [agent]: model,
+  }
+}
+
+export function updateSelectedAiChatPerformanceForAgent<TAgent extends AiChatAgent>(
+  selectedPerformanceByAgent: SelectedPerformanceByAgent,
+  agent: TAgent,
+  performance: SelectedPerformanceByAgent[TAgent],
+): SelectedPerformanceByAgent {
+  return {
+    ...selectedPerformanceByAgent,
+    [agent]: performance,
   }
 }
 

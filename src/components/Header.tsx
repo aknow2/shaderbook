@@ -12,7 +12,7 @@ export function Header({ onRun, onReset, onSave }: HeaderProps) {
           W
         </div>
         <div>
-          <h1>WGSL Playground</h1>
+          <h1>Shaderbook</h1>
           <p>Write and preview WGSL shaders in real time.</p>
         </div>
       </div>

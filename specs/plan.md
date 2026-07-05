@@ -1,4 +1,4 @@
-# WGSL Shader Playground — 実装計画書
+# Shaderbook — 実装計画書
 
 対象: `specs/spec.md`（仕様書）および `specs/image.png`（画面イメージ）に基づく実装計画。
 
@@ -130,7 +130,7 @@ type AppState = {
 
 ### 5.1 Header（spec §15.1, 画像レイアウト準拠）
 
-* ロゴアイコン（`W` の四角アイコン）+ `WGSL Playground` + 補足テキスト
+* ロゴアイコン（`W` の四角アイコン）+ `Shaderbook` + 補足テキスト
 * 右側に `Run`（Cmd/Ctrl+Enter 併記）, `Reset`, `Save` ボタン
 * `⋮` メニューボタンは表示しない（§1.1 参照、MVP スコープ外の未実装機能のため）
 * Props は spec §15.1 の `HeaderProps` をそのまま使用

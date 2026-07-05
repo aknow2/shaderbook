@@ -18,7 +18,7 @@ export function buildAiChatPrompt(input: {
     })
     .join('\n\n')
 
-  return `あなたは WGSL Shader Playground の AI チャットアシスタントです。
+  return `あなたは Shaderbook の AI チャットアシスタントです。
 
 以下のルールを必ず守ってください。
 - 回答は日本語にしてください。

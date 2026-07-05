@@ -1,4 +1,4 @@
-# WGSL Shader Playground パラパラ漫画(Flipbook)機能 仕様書
+# Shaderbook パラパラ漫画(Flipbook)機能 仕様書
 
 ## 1. 概要
 
@@ -264,7 +264,7 @@ Flipbook パラメータは Flipbook モードの時だけ表示する。
 
 ```text
 +--------------------------------------------------------------------------------+
-| WGSL Playground                                      Run   Reset   Save          |
+| Shaderbook                                      Run   Reset   Save          |
 +--------------------------------------+-----------------------------------------+
 | Editor                               | Preview                                 |
 |                                      | [Animation|Flipbook] [Fit] [Fullscreen] |
@@ -282,7 +282,7 @@ Flipbook パラメータは Flipbook モードの時だけ表示する。
 
 ```text
 +--------------------------------------------------------------------------------+
-| WGSL Playground                                      Run   Reset   Save          |
+| Shaderbook                                      Run   Reset   Save          |
 +--------------------------------------+-----------------------------------------+
 | Editor                               | Preview                                 |
 |                                      | [Animation|Flipbook] Frames[16]         |

@@ -1,4 +1,4 @@
-# WGSL Shader Playground AIチャット機能 — タスクリスト
+# Shaderbook AIチャット機能 — タスクリスト
 
 `specs/ai-chat/spec.md` と `specs/ai-chat/plan.md`（承認済み）に基づく実装タスク。
 上から順に着手する。各タスクは TDD 前提で、先に対象テストを書き、完了条件（DoD）を満たしたらチェックを付ける。

@@ -4,11 +4,11 @@ import {
   AI_CHAT_CLIENT_TIMEOUT_MS,
   AI_CHAT_CODE_MAX_LENGTH,
   AI_CHAT_DEFAULT_MODEL_BY_AGENT,
-  AI_CHAT_DEFAULT_PERFORMANCE,
+  AI_CHAT_DEFAULT_PERFORMANCE_BY_AGENT,
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
   AI_CHAT_MODEL_OPTIONS_BY_AGENT,
-  AI_CHAT_PERFORMANCE_OPTIONS,
+  AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT,
   AI_CHAT_REQUEST_ID_MAX_LENGTH,
   AI_CHAT_SERVER_TIMEOUT_MS,
   normalizeAiChatMessageRequest,
@@ -23,8 +23,10 @@ import {
   createAiChatId,
   createChatHistory,
   createInitialSelectedModelByAgent,
+  createInitialSelectedPerformanceByAgent,
   switchAiChatAgent,
   updateSelectedAiChatModelForAgent,
+  updateSelectedAiChatPerformanceForAgent,
   validateAiChatDraft,
   validateAiChatMessageText,
 } from './state'
@@ -99,15 +101,20 @@ describe('AI chat selection shared contract', () => {
     expect(typedAgents).toEqual(['codex', 'claude'])
   })
 
-  it('AiChatPerformance can represent fast, balanced, and deep', () => {
-    const performances = AI_CHAT_PERFORMANCE_OPTIONS.map((option) => option.id)
+  it('AiChatPerformance can represent each CLI effort option', () => {
+    const performances = [
+      ...AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT.codex.map((option) => option.id),
+      ...AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT.claude.map((option) => option.id),
+    ]
     const typedPerformances = performances satisfies AiChatPerformance[]
 
-    expect(typedPerformances).toEqual(['fast', 'balanced', 'deep'])
+    expect(new Set(typedPerformances)).toEqual(
+      new Set(['default', 'low', 'medium', 'high', 'xhigh', 'max']),
+    )
   })
 
-  it('uses codex-default as the Codex default model', () => {
-    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex).toBe('codex-default')
+  it('uses GPT-5.5 as the Codex default model', () => {
+    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex).toBe('gpt-5.5')
   })
 
   it('uses claude-default as the Claude default model', () => {
@@ -116,22 +123,25 @@ describe('AI chat selection shared contract', () => {
 
   it('defines model options per agent', () => {
     expect(AI_CHAT_MODEL_OPTIONS_BY_AGENT.codex.map((option) => option.id)).toEqual([
-      'codex-default',
-      'codex-fast',
-      'codex-deep',
+      'gpt-5.5',
+      'gpt-5.4',
+      'gpt-5.4-mini',
+      'gpt-5.3-codex-spark',
     ])
     expect(AI_CHAT_MODEL_OPTIONS_BY_AGENT.claude.map((option) => option.id)).toEqual([
       'claude-default',
-      'claude-fast',
-      'claude-deep',
+      'sonnet',
+      'fable',
+      'opus',
+      'haiku',
     ])
   })
 
-  it('normalizes an old request without agent, model, or performance to Codex balanced defaults', () => {
+  it('normalizes an old request without agent, model, or performance to Codex defaults', () => {
     expect(normalizeAiChatMessageRequest(messageRequest())).toMatchObject({
       agent: 'codex',
-      model: 'codex-default',
-      performance: 'balanced',
+      model: 'gpt-5.5',
+      performance: 'high',
     })
   })
 
@@ -139,19 +149,19 @@ describe('AI chat selection shared contract', () => {
     expect(normalizeAiChatMessageRequest(messageRequest({ agent: 'claude' }))).toMatchObject({
       agent: 'claude',
       model: 'claude-default',
-      performance: 'balanced',
+      performance: 'default',
     })
   })
 
-  it('normalizes missing performance to balanced', () => {
+  it('normalizes missing performance to the selected agent default', () => {
     expect(
       normalizeAiChatMessageRequest(
-        messageRequest({ agent: 'codex', model: 'codex-fast' }),
+        messageRequest({ agent: 'codex', model: 'gpt-5.4' }),
       ),
     ).toMatchObject({
       agent: 'codex',
-      model: 'codex-fast',
-      performance: AI_CHAT_DEFAULT_PERFORMANCE,
+      model: 'gpt-5.4',
+      performance: AI_CHAT_DEFAULT_PERFORMANCE_BY_AGENT.codex,
     })
   })
 
@@ -172,44 +182,78 @@ describe('AI chat selection shared contract', () => {
   it('rejects claude agent with a Codex model', () => {
     expect(() =>
       normalizeAiChatMessageRequest(
-        messageRequest({ agent: 'claude', model: 'codex-default' }),
+        messageRequest({ agent: 'claude', model: 'gpt-5.5' }),
       ),
     ).toThrow('AI chat model is not available for the selected agent.')
   })
 
+  it('rejects codex agent with a Claude-only performance', () => {
+    expect(() =>
+      normalizeAiChatMessageRequest(
+        messageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'max' }),
+      ),
+    ).toThrow('AI chat performance is not available for the selected agent.')
+  })
+
   it('initializes selectedModelByAgent with each agent default model', () => {
     expect(createInitialSelectedModelByAgent()).toEqual({
-      codex: 'codex-default',
+      codex: 'gpt-5.5',
       claude: 'claude-default',
     })
   })
 
-  it('keeps performance when switching agents', () => {
+  it('initializes selectedPerformanceByAgent with each agent default performance', () => {
+    expect(createInitialSelectedPerformanceByAgent()).toEqual({
+      codex: 'high',
+      claude: 'default',
+    })
+  })
+
+  it('keeps performance-by-agent state when switching agents', () => {
     expect(
       switchAiChatAgent(
         {
           selectedAgent: 'codex',
           selectedModelByAgent: createInitialSelectedModelByAgent(),
-          selectedPerformance: 'deep',
+          selectedPerformanceByAgent: {
+            codex: 'xhigh',
+            claude: 'max',
+          },
         },
         'claude',
       ),
     ).toEqual({
       selectedAgent: 'claude',
       selectedModelByAgent: {
-        codex: 'codex-default',
+        codex: 'gpt-5.5',
         claude: 'claude-default',
       },
-      selectedPerformance: 'deep',
+      selectedPerformanceByAgent: {
+        codex: 'xhigh',
+        claude: 'max',
+      },
     })
   })
 
   it('updates only the selected model for the requested agent', () => {
     expect(
-      updateSelectedAiChatModelForAgent(createInitialSelectedModelByAgent(), 'claude', 'claude-deep'),
+      updateSelectedAiChatModelForAgent(createInitialSelectedModelByAgent(), 'claude', 'opus'),
     ).toEqual({
-      codex: 'codex-default',
-      claude: 'claude-deep',
+      codex: 'gpt-5.5',
+      claude: 'opus',
+    })
+  })
+
+  it('updates only the selected performance for the requested agent', () => {
+    expect(
+      updateSelectedAiChatPerformanceForAgent(
+        createInitialSelectedPerformanceByAgent(),
+        'claude',
+        'max',
+      ),
+    ).toEqual({
+      codex: 'high',
+      claude: 'max',
     })
   })
 })
@@ -324,7 +368,7 @@ describe('AI chat state helpers', () => {
         }),
         agent: 'claude',
         model: 'claude-default',
-        performance: 'deep',
+        performance: 'max',
       } as ChatMessage,
     ])
 

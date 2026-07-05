@@ -5,6 +5,7 @@ import {
   normalizeFlipbookSettings,
   type FlipbookDraft,
 } from '../flipbookSettings'
+import { downloadFlipbookFramesAsPngs } from '../flipbookExport'
 import { createShaderPipeline } from '../gpu/createShaderPipeline'
 import {
   createUniformBuffer,
@@ -370,6 +371,17 @@ export function PreviewPane({
     })
   }, [])
 
+  const handleDownloadFlipbookPngs = useCallback(async () => {
+    const canvas = canvasRef.current
+    const grid = latestGrid
+    if (!canvas || !grid || grid.cells.length === 0) {
+      return
+    }
+
+    await gpuRef.current?.device.queue.onSubmittedWorkDone?.()
+    await downloadFlipbookFramesAsPngs({ sourceCanvas: canvas, grid })
+  }, [latestGrid])
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === frameRef.current)
@@ -573,6 +585,19 @@ export function PreviewPane({
                 commitFlipbookDraft(draft)
               }}
             />
+          ) : null}
+          {previewMode === 'flipbook' ? (
+            <button
+              type="button"
+              className="control-button"
+              aria-label="Download flipbook frames as PNG files"
+              disabled={!latestGrid || latestGrid.cells.length === 0}
+              onClick={() => {
+                void handleDownloadFlipbookPngs()
+              }}
+            >
+              Download PNGs
+            </button>
           ) : null}
           <select className="control-select" aria-label="Preview scale" defaultValue="fit">
             <option value="fit">Fit</option>

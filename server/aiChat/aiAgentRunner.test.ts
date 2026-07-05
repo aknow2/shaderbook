@@ -42,8 +42,8 @@ function normalizedRequest(
     code: '@fragment fn main() -> @location(0) vec4f { return vec4f(1); }',
     history: [],
     agent: 'codex',
-    model: 'codex-default',
-    performance: 'balanced',
+    model: 'gpt-5.5',
+    performance: 'high',
     ...overrides,
   }
 }
@@ -186,30 +186,29 @@ describe('agentConfig', () => {
     expect(getAiChatAgentBaseArgs('claude')).toContain('--print')
   })
 
-  it('does not add --model for default models', () => {
-    expect(getAiChatModelArgs('codex', 'codex-default')).toEqual([])
+  it('adds the selected Codex model and omits Claude default model args', () => {
+    expect(getAiChatModelArgs('codex', 'gpt-5.5')).toEqual(['--model', 'gpt-5.5'])
     expect(getAiChatModelArgs('claude', 'claude-default')).toEqual([])
   })
 
-  it('does not add performance args for balanced', () => {
-    expect(getAiChatPerformanceArgs('codex', 'balanced')).toEqual([])
-    expect(getAiChatPerformanceArgs('claude', 'balanced')).toEqual([])
+  it('does not add Claude performance args for default', () => {
+    expect(getAiChatPerformanceArgs('claude', 'default')).toEqual([])
   })
 
-  it('defines explicit fast and deep performance argv fragments for each agent', () => {
-    expect(getAiChatPerformanceArgs('codex', 'fast')).toEqual([
+  it('defines explicit CLI effort argv fragments for each agent', () => {
+    expect(getAiChatPerformanceArgs('codex', 'low')).toEqual([
       '--config',
       expect.any(String),
     ])
-    expect(getAiChatPerformanceArgs('codex', 'deep')).toEqual([
+    expect(getAiChatPerformanceArgs('codex', 'xhigh')).toEqual([
       '--config',
       expect.any(String),
     ])
-    expect(getAiChatPerformanceArgs('claude', 'fast')).toEqual([
+    expect(getAiChatPerformanceArgs('claude', 'low')).toEqual([
       '--effort',
       expect.any(String),
     ])
-    expect(getAiChatPerformanceArgs('claude', 'deep')).toEqual([
+    expect(getAiChatPerformanceArgs('claude', 'max')).toEqual([
       '--effort',
       expect.any(String),
     ])

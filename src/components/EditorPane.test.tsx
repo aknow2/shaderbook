@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EditorView } from '@codemirror/view'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -30,12 +30,35 @@ describe('EditorPane', () => {
     render(<EditorPane code="fn mainImage() {}" onChange={vi.fn()} />)
 
     expect(screen.getByText('Editor')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hide', expanded: true })).toBeInTheDocument()
     expect(screen.getByText('shader.wgsl')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open shader file shader.wgsl' })).toHaveAttribute(
       'aria-label',
       'Open shader file shader.wgsl',
     )
     expect(getEditorView().state.doc.toString()).toBe('fn mainImage() {}')
+  })
+
+  it('hides and shows the editor content without losing the current document', () => {
+    render(<EditorPane code="fn mainImage() {}" onChange={vi.fn()} />)
+    const view = getEditorView()
+
+    act(() => {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: 'updated shader code' },
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide', expanded: true }))
+
+    expect(screen.getByRole('button', { name: 'Show', expanded: false })).toBeInTheDocument()
+    expect(screen.getByLabelText('WGSL shader code')).not.toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show', expanded: false }))
+
+    expect(screen.getByRole('button', { name: 'Hide', expanded: true })).toBeInTheDocument()
+    expect(getEditorView()).toBe(view)
+    expect(getEditorView().state.doc.toString()).toBe('updated shader code')
   })
 
   it('calls onChange when the editor document changes', () => {

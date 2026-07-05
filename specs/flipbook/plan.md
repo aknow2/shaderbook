@@ -1,4 +1,4 @@
-# WGSL Shader Playground Flipbook — 実装計画書
+# Shaderbook Flipbook — 実装計画書
 
 対象: `specs/flipbook/spec.md` に基づく Flipbook 機能の実装計画。既存計画 `specs/plan.md` の方針を継承し、React state、WebGPU モジュール分割、`PreviewPane` の世代管理、エラースコープ回収、TDD を前提にする。
 

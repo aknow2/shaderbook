@@ -269,7 +269,7 @@ describe('createAiChatHandler', () => {
 
     const { response } = await send({
       url: '/messages',
-      body: validMessageRequest({ agent: 'codex', model: 'codex-default' }),
+      body: validMessageRequest({ agent: 'codex', model: 'gpt-5.5' }),
       runAiChatAgent,
     })
 
@@ -309,17 +309,17 @@ describe('createAiChatHandler', () => {
 
     await send({
       url: '/messages',
-      body: validMessageRequest({ model: 'codex-fast' }),
+      body: validMessageRequest({ model: 'gpt-5.4' }),
       runAiChatAgent,
     })
 
     expect(runAiChatAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ agent: 'codex', model: 'codex-fast' }),
+      expect.objectContaining({ agent: 'codex', model: 'gpt-5.4' }),
       expect.anything(),
     )
   })
 
-  it('normalizes an old request without agent or model to codex and codex-default', async () => {
+  it('normalizes an old request without agent or model to codex and GPT-5.5', async () => {
     const runAiChatAgent = vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
@@ -335,13 +335,13 @@ describe('createAiChatHandler', () => {
     expect(runAiChatAgent).toHaveBeenCalledWith(
       expect.objectContaining({
         agent: 'codex',
-        model: 'codex-default',
+        model: 'gpt-5.5',
       }),
       expect.anything(),
     )
   })
 
-  it('normalizes a codex request without model to codex-default', async () => {
+  it('normalizes a codex request without model to GPT-5.5', async () => {
     const runAiChatAgent = vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
@@ -355,7 +355,7 @@ describe('createAiChatHandler', () => {
     })
 
     expect(runAiChatAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ agent: 'codex', model: 'codex-default' }),
+      expect.objectContaining({ agent: 'codex', model: 'gpt-5.5' }),
       expect.anything(),
     )
   })
@@ -379,7 +379,7 @@ describe('createAiChatHandler', () => {
     )
   })
 
-  it('normalizes a request without performance to balanced', async () => {
+  it('normalizes a request without performance to the selected agent default', async () => {
     const runAiChatAgent = vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
@@ -393,7 +393,7 @@ describe('createAiChatHandler', () => {
     })
 
     expect(runAiChatAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ performance: 'balanced' }),
+      expect.objectContaining({ performance: 'default' }),
       expect.anything(),
     )
   })
@@ -440,12 +440,24 @@ describe('createAiChatHandler', () => {
   it('returns 400 INVALID_REQUEST for claude with a codex model', async () => {
     const { response } = await send({
       url: '/messages',
-      body: validMessageRequest({ agent: 'claude', model: 'codex-default' }),
+      body: validMessageRequest({ agent: 'claude', model: 'gpt-5.5' }),
     })
 
     expectInvalidRequestMessage(
       response,
       'AI chat model is not available for the selected agent.',
+    )
+  })
+
+  it('returns 400 INVALID_REQUEST for codex with a claude-only performance', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'max' }),
+    })
+
+    expectInvalidRequestMessage(
+      response,
+      'AI chat performance is not available for the selected agent.',
     )
   })
 

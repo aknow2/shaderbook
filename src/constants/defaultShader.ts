@@ -1,4 +1,4 @@
-export const defaultShader = `// WGSL Shader Playground
+export const defaultShader = `// Shaderbook
 // To use time and resolution, keep the struct Uniforms declaration and the @group(0) @binding(0) uniform binding in this code.
 
 struct Uniforms {

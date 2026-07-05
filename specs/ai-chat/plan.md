@@ -1,4 +1,4 @@
-# WGSL Shader Playground AIチャット機能 — 実装計画書
+# Shaderbook AIチャット機能 — 実装計画書
 
 対象: `specs/ai-chat/spec.md` に基づく AIチャット機能の実装計画。既存計画 `specs/plan.md` の方針を継承し、React state、既存 `EditorPane` / `ErrorPanel` / `PreviewPane` の配置、`Ctrl+Enter` による Run、Vite + Vitest の構成を前提にする。
 
@@ -394,7 +394,7 @@ export function buildCodexPrompt(input: {
     })
     .join('\n\n');
 
-  return `あなたは WGSL Shader Playground の AI チャットアシスタントです。
+  return `あなたは Shaderbook の AI チャットアシスタントです。
 
 以下のルールを必ず守ってください。
 - 回答は日本語にしてください。

@@ -1,4 +1,4 @@
-# WGSL Shader Playground
+# Shaderbook
 
 A React + TypeScript + Vite playground for writing WGSL shader code and previewing it with WebGPU.
 

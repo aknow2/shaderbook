@@ -6,7 +6,7 @@ describe('Header', () => {
   it('renders title, supporting text, and action buttons without an overflow menu', () => {
     render(<Header onRun={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} />)
 
-    expect(screen.getByText('WGSL Playground')).toBeInTheDocument()
+    expect(screen.getByText('Shaderbook')).toBeInTheDocument()
     expect(
       screen.getByText('Write and preview WGSL shaders in real time.'),
     ).toBeInTheDocument()

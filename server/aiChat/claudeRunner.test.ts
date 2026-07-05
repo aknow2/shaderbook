@@ -53,7 +53,7 @@ function normalizedRequest(
     history: [],
     agent: 'claude',
     model: 'claude-default',
-    performance: 'balanced',
+    performance: 'default',
     ...overrides,
   }
 }
@@ -147,8 +147,8 @@ describe('runClaude spawn / stdin / stdout parse', () => {
     expect(fake.calls[0].args).not.toContain('--model')
   })
 
-  it('adds the claude-fast model mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ model: 'claude-fast' })
+  it('adds the sonnet model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'sonnet' })
     const child = fake.children[0]
 
     emitValidStdout(child)
@@ -156,12 +156,12 @@ describe('runClaude spawn / stdin / stdout parse', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES['claude-fast']]),
+      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES.sonnet]),
     )
   })
 
-  it('adds the claude-deep model mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ model: 'claude-deep' })
+  it('adds the fable model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'fable' })
     const child = fake.children[0]
 
     emitValidStdout(child)
@@ -169,12 +169,38 @@ describe('runClaude spawn / stdin / stdout parse', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES['claude-deep']]),
+      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES.fable]),
     )
   })
 
-  it('does not add performance args for balanced', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'balanced' })
+  it('adds the opus model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'opus' })
+    const child = fake.children[0]
+
+    emitValidStdout(child)
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES.opus]),
+    )
+  })
+
+  it('adds the haiku model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'haiku' })
+    const child = fake.children[0]
+
+    emitValidStdout(child)
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--model', CLAUDE_MODEL_CLI_VALUES.haiku]),
+    )
+  })
+
+  it('does not add performance args for default', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'default' })
     const child = fake.children[0]
 
     emitValidStdout(child)
@@ -184,8 +210,8 @@ describe('runClaude spawn / stdin / stdout parse', () => {
     expect(fake.calls[0].args).not.toContain('--effort')
   })
 
-  it('adds the claude fast performance mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'fast' })
+  it('adds the claude low performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'low' })
     const child = fake.children[0]
 
     emitValidStdout(child)
@@ -193,12 +219,12 @@ describe('runClaude spawn / stdin / stdout parse', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.fast]),
+      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.low]),
     )
   })
 
-  it('adds the claude deep performance mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'deep' })
+  it('adds the claude medium performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'medium' })
     const child = fake.children[0]
 
     emitValidStdout(child)
@@ -206,7 +232,46 @@ describe('runClaude spawn / stdin / stdout parse', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.deep]),
+      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.medium]),
+    )
+  })
+
+  it('adds the claude high performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'high' })
+    const child = fake.children[0]
+
+    emitValidStdout(child)
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.high]),
+    )
+  })
+
+  it('adds the claude xhigh performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'xhigh' })
+    const child = fake.children[0]
+
+    emitValidStdout(child)
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.xhigh]),
+    )
+  })
+
+  it('adds the claude max performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'max' })
+    const child = fake.children[0]
+
+    emitValidStdout(child)
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--effort', CLAUDE_PERFORMANCE_CLI_VALUES.max]),
     )
   })
 

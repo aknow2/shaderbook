@@ -114,10 +114,10 @@ describe('ChatPanel', () => {
     expect(getSettings()).toHaveClass('chat-controls')
     expect(getAgentSelect()).toHaveValue('codex')
     expect(getAgentSelect().selectedOptions[0]).toHaveTextContent('Codex CLI')
-    expect(getModelSelect()).toHaveValue('codex-default')
-    expect(getModelSelect().selectedOptions[0]).toHaveTextContent('Default')
-    expect(getPerformanceSelect()).toHaveValue('balanced')
-    expect(getPerformanceSelect().selectedOptions[0]).toHaveTextContent('Balanced')
+    expect(getModelSelect()).toHaveValue('gpt-5.5')
+    expect(getModelSelect().selectedOptions[0]).toHaveTextContent('GPT-5.5')
+    expect(getPerformanceSelect()).toHaveValue('high')
+    expect(getPerformanceSelect().selectedOptions[0]).toHaveTextContent('High')
   })
 
   it('Agent select に Codex CLI / Claude CLI が表示される', () => {
@@ -131,41 +131,58 @@ describe('ChatPanel', () => {
     renderPanel()
 
     expect(Array.from(getModelSelect().options).map((option) => option.value)).toEqual([
-      'codex-default',
-      'codex-fast',
-      'codex-deep',
+      'gpt-5.5',
+      'gpt-5.4',
+      'gpt-5.4-mini',
+      'gpt-5.3-codex-spark',
     ])
 
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
 
     expect(Array.from(getModelSelect().options).map((option) => option.value)).toEqual([
       'claude-default',
-      'claude-fast',
-      'claude-deep',
+      'sonnet',
+      'fable',
+      'opus',
+      'haiku',
     ])
     expect(getModelSelect()).toHaveValue('claude-default')
   })
 
-  it('agent ごとの model 選択を保持し、Performance は agent 切り替えで維持する', () => {
+  it('agent ごとの model / performance 選択を保持する', () => {
     renderPanel()
 
-    fireEvent.change(getPerformanceSelect(), { target: { value: 'deep' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'xhigh' } })
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
-    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'opus' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'max' } })
     fireEvent.change(getAgentSelect(), { target: { value: 'codex' } })
+    expect(getPerformanceSelect()).toHaveValue('xhigh')
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
 
-    expect(getModelSelect()).toHaveValue('claude-deep')
-    expect(getPerformanceSelect()).toHaveValue('deep')
+    expect(getModelSelect()).toHaveValue('opus')
+    expect(getPerformanceSelect()).toHaveValue('max')
   })
 
-  it('Performance select に Fast / Balanced / Deep が表示される', () => {
+  it('Performance select に選択中 agent の候補が表示される', () => {
     renderPanel()
 
     expect(Array.from(getPerformanceSelect().options).map((option) => option.textContent)).toEqual([
-      'Fast',
-      'Balanced',
-      'Deep',
+      'Low',
+      'Medium',
+      'High',
+      'XHigh',
+    ])
+
+    fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
+
+    expect(Array.from(getPerformanceSelect().options).map((option) => option.textContent)).toEqual([
+      'Default',
+      'Low',
+      'Medium',
+      'High',
+      'XHigh',
+      'Max',
     ])
   })
 
@@ -181,6 +198,17 @@ describe('ChatPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { expanded: false }))
     expect(screen.getByText('Persisted response')).toBeInTheDocument()
+  })
+
+  it('controlled open state の変更を通知する', () => {
+    const onOpenChange = vi.fn()
+    renderPanel({ isOpen: false, onOpenChange })
+
+    expect(screen.queryByLabelText('AI chat message')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show', expanded: false }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(true)
   })
 
   it('空入力では Send が disabled', () => {
@@ -364,8 +392,8 @@ describe('ChatPanel', () => {
 
     expect(payload).toMatchObject({
       agent: 'codex',
-      model: 'codex-default',
-      performance: 'balanced',
+      model: 'gpt-5.5',
+      performance: 'high',
     })
   })
 
@@ -374,16 +402,16 @@ describe('ChatPanel', () => {
     renderPanel()
 
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
-    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
-    fireEvent.change(getPerformanceSelect(), { target: { value: 'fast' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'opus' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'max' } })
     submitMessage('claude payload')
     await waitFor(() => expect(sendAiChatMessageMock).toHaveBeenCalledTimes(1))
     const payload = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
 
     expect(payload).toMatchObject({
       agent: 'claude',
-      model: 'claude-deep',
-      performance: 'fast',
+      model: 'opus',
+      performance: 'max',
     })
   })
 
@@ -393,20 +421,20 @@ describe('ChatPanel', () => {
     renderPanel()
 
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
-    fireEvent.change(getModelSelect(), { target: { value: 'claude-deep' } })
-    fireEvent.change(getPerformanceSelect(), { target: { value: 'deep' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'opus' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'xhigh' } })
     submitMessage('fixed snapshot')
     await waitFor(() => expect(screen.getByText('Claude is thinking...')).toBeInTheDocument())
 
     fireEvent.change(getAgentSelect(), { target: { value: 'codex' } })
-    fireEvent.change(getModelSelect(), { target: { value: 'codex-fast' } })
-    fireEvent.change(getPerformanceSelect(), { target: { value: 'fast' } })
+    fireEvent.change(getModelSelect(), { target: { value: 'gpt-5.4' } })
+    fireEvent.change(getPerformanceSelect(), { target: { value: 'low' } })
 
     const payload = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
     expect(payload).toMatchObject({
       agent: 'claude',
-      model: 'claude-deep',
-      performance: 'deep',
+      model: 'opus',
+      performance: 'xhigh',
     })
     expect(screen.getByText('Claude is thinking...')).toBeInTheDocument()
     expect(screen.queryByText('Codex is thinking...')).not.toBeInTheDocument()

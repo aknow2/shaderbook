@@ -1,4 +1,4 @@
-# WGSL Shader Playground — タスクリスト
+# Shaderbook — タスクリスト
 
 `specs/plan.md`（codex レビュー承認済み）に基づく実装タスク。
 上から順に着手する。各タスクは完了条件（DoD）を満たしたらチェックを付ける。
@@ -36,7 +36,7 @@
   - DoD: 4領域が仕様比率で表示される
 
 - [x] **T1-3: Header コンポーネント（静的）**（plan §5.1, spec §5.2）
-  - ロゴアイコン + `WGSL Playground` + `Write and preview WGSL shaders in real time.`
+  - ロゴアイコン + `Shaderbook` + `Write and preview WGSL shaders in real time.`
   - Run（Ctrl+Enter 併記）/ Reset / Save ボタン（`⋮` メニューは置かない）
   - Props: `HeaderProps { onRun, onReset, onSave }`（この時点でハンドラは空でよい）
   - DoD: image.png に近い見た目のヘッダーが表示される

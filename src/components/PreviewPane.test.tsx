@@ -83,9 +83,17 @@ const flipbookControlsMocks = vi.hoisted(() => ({
   draftFrameCount: (_value: string) => {},
 }))
 
+const flipbookExportMocks = vi.hoisted(() => ({
+  downloadFlipbookFramesAsPngs: vi.fn(() => Promise.resolve(1)),
+}))
+
 vi.mock('../gpu/renderFlipbook', () => ({
   renderFlipbook: renderFlipbookMocks.renderFlipbook,
   destroyFlipbookFrameResources: renderFlipbookMocks.destroyFlipbookFrameResources,
+}))
+
+vi.mock('../flipbookExport', () => ({
+  downloadFlipbookFramesAsPngs: flipbookExportMocks.downloadFlipbookFramesAsPngs,
 }))
 
 vi.mock('./FlipbookControls', async () => {
@@ -357,6 +365,7 @@ describe('PreviewPane WebGPU integration', () => {
     renderFlipbookMocks.renderFlipbook.mockReset()
     renderFlipbookMocks.renderFlipbook.mockImplementation(() => createMockFlipbookResult())
     renderFlipbookMocks.destroyFlipbookFrameResources.mockClear()
+    flipbookExportMocks.downloadFlipbookFramesAsPngs.mockClear()
   })
 
   afterEach(() => {
@@ -708,6 +717,25 @@ describe('PreviewPane WebGPU integration', () => {
     })
 
     expect(getRenderFlipbookCallCount()).toBe(renderCountBefore + 1)
+  })
+
+  it('downloads the latest flipbook grid as separate PNG files', async () => {
+    await renderAndFlushFlipbook()
+    const canvas = screen.getByLabelText('WebGPU shader flipbook preview')
+    const downloadButton = screen.getByRole('button', {
+      name: 'Download flipbook frames as PNG files',
+    })
+
+    expect(downloadButton).toBeEnabled()
+    fireEvent.click(downloadButton)
+
+    await waitFor(() => {
+      expect(flipbookExportMocks.downloadFlipbookFramesAsPngs).toHaveBeenCalledTimes(1)
+    })
+    expect(flipbookExportMocks.downloadFlipbookFramesAsPngs).toHaveBeenCalledWith({
+      sourceCanvas: canvas,
+      grid: renderFlipbookMocks.renderFlipbook.mock.results[0].value.grid,
+    })
   })
 
   it('does not redraw flipbook after a successful Run compile in live mode', async () => {

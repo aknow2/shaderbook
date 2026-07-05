@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   sendAiChatMessage: vi.fn(),
   cancelAiChatRequest: vi.fn(),
 }))
+
+const SHADER_DRAFT_STORAGE_KEY = 'shaderbook:shader-draft:v1'
 
 vi.mock('./components/PreviewPane', () => ({
   PreviewPane: mocks.PreviewPane,
@@ -29,6 +31,14 @@ vi.mock('./aiChat/client', () => ({
   sendAiChatMessage: mocks.sendAiChatMessage,
   cancelAiChatRequest: mocks.cancelAiChatRequest,
 }))
+
+beforeEach(() => {
+  window.localStorage.clear()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function getEditorView() {
   const editor = screen.getByLabelText('WGSL shader code')
@@ -97,6 +107,93 @@ function mockAiChatSuccess(content = 'Assistant response', proposedCode: string 
     }),
   )
 }
+
+function mockWorkspaceRect(element: Element, rect: Partial<DOMRect>) {
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
+    x: rect.x ?? 0,
+    y: rect.y ?? 0,
+    width: rect.width ?? 1000,
+    height: rect.height ?? 700,
+    top: rect.top ?? 0,
+    right: rect.right ?? (rect.left ?? 0) + (rect.width ?? 1000),
+    bottom: rect.bottom ?? 700,
+    left: rect.left ?? 0,
+    toJSON: () => {},
+  } as DOMRect)
+}
+
+describe('App shader draft persistence', () => {
+  it('starts with the stored WGSL draft when localStorage has a valid draft', () => {
+    window.localStorage.setItem(
+      SHADER_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        code: 'fn mainImage() -> vec4f { return vec4f(0.8); }',
+        savedAt: 1000,
+      }),
+    )
+
+    render(<App />)
+
+    expect(getEditorView().state.doc.toString()).toBe(
+      'fn mainImage() -> vec4f { return vec4f(0.8); }',
+    )
+  })
+
+  it('falls back to the default shader when the stored draft is invalid', () => {
+    window.localStorage.setItem(SHADER_DRAFT_STORAGE_KEY, '{"version":0,"code":false}')
+
+    render(<App />)
+
+    expect(getEditorView().state.doc.toString()).toBe(defaultShader)
+  })
+
+  it('stores changed WGSL code every 5 seconds only when the content changed', async () => {
+    vi.useFakeTimers()
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    render(<App />)
+
+    await replaceEditorCode('fn mainImage() -> vec4f { return vec4f(0.25); }')
+
+    act(() => {
+      vi.advanceTimersByTime(4999)
+    })
+
+    expect(window.localStorage.getItem(SHADER_DRAFT_STORAGE_KEY)).toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+
+    expect(setItemSpy).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(window.localStorage.getItem(SHADER_DRAFT_STORAGE_KEY) ?? '{}')).toEqual(
+      expect.objectContaining({
+        version: 1,
+        code: 'fn mainImage() -> vec4f { return vec4f(0.25); }',
+      }),
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    expect(setItemSpy).toHaveBeenCalledTimes(1)
+
+    await replaceEditorCode('fn mainImage() -> vec4f { return vec4f(0.75); }')
+
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    expect(setItemSpy).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(window.localStorage.getItem(SHADER_DRAFT_STORAGE_KEY) ?? '{}')).toEqual(
+      expect.objectContaining({
+        version: 1,
+        code: 'fn mainImage() -> vec4f { return vec4f(0.75); }',
+      }),
+    )
+  })
+})
 
 describe('App Run, Save, and keyboard shortcuts', () => {
   const createObjectURL = vi.fn(() => 'blob:shader')
@@ -262,10 +359,16 @@ describe('App Run, Save, and keyboard shortcuts', () => {
 
     const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
     const childClassNames = Array.from(editorColumn?.children ?? []).map((child) => child.className)
+    const editorStack = editorColumn?.querySelector('.editor-stack')
+    const editorStackChildClassNames = Array.from(editorStack?.children ?? []).map(
+      (child) => child.className,
+    )
 
-    expect(childClassNames[0]).toContain('editor-pane')
-    expect(childClassNames[1]).toContain('error-panel')
+    expect(childClassNames[0]).toContain('editor-stack')
+    expect(childClassNames[1]).toContain('chat-splitter')
     expect(childClassNames[2]).toContain('chat-panel')
+    expect(editorStackChildClassNames[0]).toContain('editor-pane')
+    expect(editorStackChildClassNames[1]).toContain('error-panel')
   })
 
   it('A6-1: ChatPanel に現在の `code` が渡る', async () => {
@@ -294,7 +397,7 @@ describe('App Run, Save, and keyboard shortcuts', () => {
     })
   })
 
-  it('A6-1: Apply だけでは `shouldCompile` が反転しない', async () => {
+  it('A6-1: Apply で `shouldCompile` が反転して Run が実行される', async () => {
     mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
     render(<App />)
 
@@ -304,19 +407,22 @@ describe('App Run, Save, and keyboard shortcuts', () => {
     await waitFor(() => {
       expect(getLastPreviewPaneProps().code).toBe('fn mainImage() -> vec4f { return vec4f(0.75); }')
     })
-    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(true)
   })
 
-  it('A6-1: Apply だけでは Preview が更新されない', async () => {
+  it('A6-1: Apply は Run ボタンと同じ edge trigger として毎回反転する', async () => {
     mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
     render(<App />)
 
     submitAiChatMessage('replace code')
-    fireEvent.click(await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' }))
+    const applyButton = await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' })
+    fireEvent.click(applyButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Compile: Idle')).toBeInTheDocument()
+      expect(getLastPreviewPaneProps().shouldCompile).toBe(true)
     })
+    fireEvent.click(applyButton)
+
     expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
   })
 
@@ -451,6 +557,178 @@ describe('App Run, Save, and keyboard shortcuts', () => {
 
     dispatchShortcut(screen.getByLabelText('WGSL shader code'), { key: 's', metaKey: true })
     expect(createObjectURL).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('App workspace resizing', () => {
+  beforeEach(() => {
+    mocks.PreviewPane.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders an accessible separator between the editor and preview', () => {
+    render(<App />)
+
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and preview panels',
+    })
+
+    expect(splitter).toHaveAttribute('aria-orientation', 'vertical')
+    expect(splitter).toHaveAttribute('aria-valuenow', '45')
+    expect(splitter).toHaveAttribute('tabindex', '0')
+  })
+
+  it('changes the editor and preview widths by dragging the separator', () => {
+    render(<App />)
+    const workspace = screen.getByLabelText('Shader workspace')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and preview panels',
+    })
+    mockWorkspaceRect(workspace, { left: 100, width: 1000 })
+
+    fireEvent.pointerDown(splitter, { clientX: 550, pointerId: 1 })
+    fireEvent.pointerMove(splitter, { clientX: 700, pointerId: 1 })
+    fireEvent.pointerUp(splitter, { pointerId: 1 })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '60')
+    expect(workspace).toHaveStyle({
+      gridTemplateColumns: 'minmax(320px, 60%) 8px minmax(360px, 1fr)',
+    })
+  })
+
+  it('clamps drag resizing so the preview keeps its minimum width', () => {
+    render(<App />)
+    const workspace = screen.getByLabelText('Shader workspace')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and preview panels',
+    })
+    mockWorkspaceRect(workspace, { left: 0, width: 1000 })
+
+    fireEvent.pointerDown(splitter, { clientX: 900, pointerId: 1 })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '63')
+    expect(workspace).toHaveStyle({
+      gridTemplateColumns: 'minmax(320px, 63.2%) 8px minmax(360px, 1fr)',
+    })
+  })
+
+  it('supports keyboard resizing from the separator', () => {
+    render(<App />)
+    const workspace = screen.getByLabelText('Shader workspace')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and preview panels',
+    })
+    mockWorkspaceRect(workspace, { left: 0, width: 1000 })
+
+    fireEvent.keyDown(splitter, { key: 'ArrowRight' })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '48')
+    expect(workspace).toHaveStyle({
+      gridTemplateColumns: 'minmax(320px, 48.2%) 8px minmax(360px, 1fr)',
+    })
+  })
+
+  it('renders an accessible separator between the editor and AI chat', () => {
+    render(<App />)
+
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and AI chat panels',
+    })
+
+    expect(splitter).toHaveAttribute('aria-orientation', 'horizontal')
+    expect(splitter).toHaveAttribute('aria-valuenow', '52')
+    expect(splitter).toHaveAttribute('tabindex', '0')
+  })
+
+  it('changes the editor and AI chat heights by dragging the separator', () => {
+    render(<App />)
+    const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and AI chat panels',
+    })
+
+    if (!editorColumn) {
+      throw new Error('editor column was not found')
+    }
+
+    mockWorkspaceRect(editorColumn, { top: 100, height: 800 })
+
+    fireEvent.pointerDown(splitter, { clientY: 516, pointerId: 1 })
+    fireEvent.pointerMove(splitter, { clientY: 620, pointerId: 1 })
+    fireEvent.pointerUp(splitter, { pointerId: 1 })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '65')
+    expect(editorColumn).toHaveStyle({
+      gridTemplateRows: 'minmax(180px, 65%) 8px minmax(180px, 1fr)',
+    })
+  })
+
+  it('clamps chat resizing so the AI chat keeps its minimum height', () => {
+    render(<App />)
+    const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and AI chat panels',
+    })
+
+    if (!editorColumn) {
+      throw new Error('editor column was not found')
+    }
+
+    mockWorkspaceRect(editorColumn, { top: 0, height: 800 })
+
+    fireEvent.pointerDown(splitter, { clientY: 780, pointerId: 1 })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '77')
+    expect(editorColumn).toHaveStyle({
+      gridTemplateRows: 'minmax(180px, 76.5%) 8px minmax(180px, 1fr)',
+    })
+  })
+
+  it('supports keyboard resizing between the editor and AI chat', () => {
+    render(<App />)
+    const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
+    const splitter = screen.getByRole('separator', {
+      name: 'Resize editor and AI chat panels',
+    })
+
+    if (!editorColumn) {
+      throw new Error('editor column was not found')
+    }
+
+    mockWorkspaceRect(editorColumn, { top: 0, height: 800 })
+
+    fireEvent.keyDown(splitter, { key: 'ArrowDown' })
+
+    expect(splitter).toHaveAttribute('aria-valuenow', '56')
+    expect(editorColumn).toHaveStyle({
+      gridTemplateRows: 'minmax(180px, 56%) 8px minmax(180px, 1fr)',
+    })
+  })
+
+  it('maximizes the editor height while AI chat is hidden', () => {
+    render(<App />)
+    const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
+    const chatPanel = screen.getByRole('heading', { name: 'AI Chat' }).closest('.chat-panel')
+
+    if (!editorColumn || !chatPanel) {
+      throw new Error('editor column or chat panel was not found')
+    }
+
+    fireEvent.click(within(chatPanel as HTMLElement).getByRole('button', { name: 'Hide' }))
+
+    expect(
+      screen.queryByRole('separator', { name: 'Resize editor and AI chat panels' }),
+    ).not.toBeInTheDocument()
+    expect(editorColumn).toHaveStyle({
+      gridTemplateRows: 'minmax(180px, 1fr) auto',
+    })
+    expect(within(chatPanel as HTMLElement).getByRole('button', { name: 'Show' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 })
 

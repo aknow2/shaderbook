@@ -55,8 +55,8 @@ function normalizedRequest(
     code: '@fragment fn main() -> @location(0) vec4f { return vec4f(1); }',
     history: [],
     agent: 'codex',
-    model: 'codex-default',
-    performance: 'balanced',
+    model: 'gpt-5.5',
+    performance: 'high',
     ...overrides,
   }
 }
@@ -152,7 +152,7 @@ describe('runCodex spawn / stdin / cleanup', () => {
     )
   })
 
-  it('does not add --model for codex-default', async () => {
+  it('adds the GPT-5.5 model mapping', async () => {
     const { fake, promise } = await runWithFakeSpawn()
     const child = fake.children[0]
     await writeValidOutput(getOutputFilePath(fake.calls[0]))
@@ -160,24 +160,13 @@ describe('runCodex spawn / stdin / cleanup', () => {
     child.close(0)
 
     await promise
-    expect(fake.calls[0].args).not.toContain('--model')
-  })
-
-  it('adds the codex-fast model mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ model: 'codex-fast' })
-    const child = fake.children[0]
-    await writeValidOutput(getOutputFilePath(fake.calls[0]))
-
-    child.close(0)
-
-    await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['codex-fast']]),
+      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['gpt-5.5']]),
     )
   })
 
-  it('adds the codex-deep model mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ model: 'codex-deep' })
+  it('adds the GPT-5.4 model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'gpt-5.4' })
     const child = fake.children[0]
     await writeValidOutput(getOutputFilePath(fake.calls[0]))
 
@@ -185,23 +174,12 @@ describe('runCodex spawn / stdin / cleanup', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['codex-deep']]),
+      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4']]),
     )
   })
 
-  it('does not add performance args for balanced', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'balanced' })
-    const child = fake.children[0]
-    await writeValidOutput(getOutputFilePath(fake.calls[0]))
-
-    child.close(0)
-
-    await promise
-    expect(fake.calls[0].args).not.toContain('--config')
-  })
-
-  it('adds the codex fast performance mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'fast' })
+  it('adds the GPT-5.4-Mini model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'gpt-5.4-mini' })
     const child = fake.children[0]
     await writeValidOutput(getOutputFilePath(fake.calls[0]))
 
@@ -209,12 +187,12 @@ describe('runCodex spawn / stdin / cleanup', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.fast]),
+      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4-mini']]),
     )
   })
 
-  it('adds the codex deep performance mapping', async () => {
-    const { fake, promise } = await runWithFakeSpawn({ performance: 'deep' })
+  it('adds the GPT-5.3-Codex-Spark model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'gpt-5.3-codex-spark' })
     const child = fake.children[0]
     await writeValidOutput(getOutputFilePath(fake.calls[0]))
 
@@ -222,7 +200,62 @@ describe('runCodex spawn / stdin / cleanup', () => {
 
     await promise
     expect(fake.calls[0].args).toEqual(
-      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.deep]),
+      expect.arrayContaining([
+        '--model',
+        CODEX_MODEL_CLI_VALUES['gpt-5.3-codex-spark'],
+      ]),
+    )
+  })
+
+  it('adds the codex low performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'low' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.low]),
+    )
+  })
+
+  it('adds the codex medium performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'medium' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.medium]),
+    )
+  })
+
+  it('adds the codex high performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'high' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.high]),
+    )
+  })
+
+  it('adds the codex xhigh performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'xhigh' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.xhigh]),
     )
   })
 
