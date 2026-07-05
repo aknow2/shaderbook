@@ -221,12 +221,12 @@ describe('App preview mode and flipbook integration', () => {
     vi.restoreAllMocks()
   })
 
-  it('passes the initial animation mode and flipbook settings to PreviewPane', () => {
+  it('passes the initial live mode and flipbook settings to PreviewPane', () => {
     render(<App />)
 
     expect(mocks.PreviewPane).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        previewMode: 'animation',
+        previewMode: 'live',
         flipbook: initialFlipbookSettings,
       }),
       undefined,

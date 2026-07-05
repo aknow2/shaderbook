@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { PreviewModeControl } from './PreviewModeControl'
 
 describe('PreviewModeControl', () => {
-  it('has an accessible preview mode label and selects Animation initially', () => {
+  it('has an accessible preview mode label and selects Live initially', () => {
     render(<PreviewModeControl onChange={vi.fn()} />)
 
     expect(screen.getByRole('group', { name: 'Preview mode' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Animation' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Live' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )

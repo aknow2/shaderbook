@@ -310,7 +310,7 @@ function createPreviewProps(
   return {
     code: defaultShader,
     shouldCompile: false,
-    previewMode: 'animation',
+    previewMode: 'live',
     flipbook: initialFlipbookSettings,
     onPreviewModeChange: vi.fn(),
     onFlipbookChange: vi.fn(),
@@ -331,7 +331,7 @@ async function renderAndFlushFlipbook(overrides?: Partial<ComponentProps<typeof 
   const raf = installRafMock()
   const gpu = createWebGpuMock()
   const props = createPreviewProps(overrides)
-  const view = render(<PreviewPane {...props} previewMode="animation" />)
+  const view = render(<PreviewPane {...props} previewMode="live" />)
 
   await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalledTimes(1))
   fireEvent.click(screen.getByRole('button', { name: 'Flipbook' }))
@@ -390,7 +390,7 @@ describe('PreviewPane WebGPU integration', () => {
         <PreviewPane
           code={defaultShader}
           shouldCompile={false}
-          previewMode="animation"
+          previewMode="live"
           flipbook={initialFlipbookSettings}
           onPreviewModeChange={vi.fn()}
           onFlipbookChange={vi.fn()}
@@ -536,7 +536,7 @@ describe('PreviewPane WebGPU integration', () => {
     ).toBeInTheDocument()
   })
 
-  it('starts in animation mode without flipbook controls or flipbook draw work', async () => {
+  it('starts in live mode without flipbook controls or flipbook draw work', async () => {
     const raf = installRafMock()
     const gpu = createWebGpuMock()
 
@@ -549,7 +549,7 @@ describe('PreviewPane WebGPU integration', () => {
     expect(gpu.device.queue.submit).not.toHaveBeenCalled()
   })
 
-  it('stops the animation render loop and draws the flipbook once when switching to flipbook mode', async () => {
+  it('stops the live render loop and draws the flipbook once when switching to flipbook mode', async () => {
     const raf = installRafMock()
     const gpu = createWebGpuMock()
     const onPreviewModeChange = vi.fn()
@@ -585,7 +585,7 @@ describe('PreviewPane WebGPU integration', () => {
     expect(getRenderFlipbookCallCount()).toBe(1)
   })
 
-  it('cancels pending flipbook RAF, destroys resources, and starts animation loop when switching to animation mode', async () => {
+  it('cancels pending flipbook RAF, destroys resources, and starts live loop when switching to live mode', async () => {
     const onPreviewModeChange = vi.fn()
     const { raf } = await renderAndFlushFlipbook({ onPreviewModeChange })
 
@@ -604,9 +604,9 @@ describe('PreviewPane WebGPU integration', () => {
     })
     expect(raf.getPendingCount()).toBe(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Animation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Live' }))
 
-    expect(onPreviewModeChange).toHaveBeenCalledWith('animation')
+    expect(onPreviewModeChange).toHaveBeenCalledWith('live')
     expect(raf.cancelAnimationFrame).toHaveBeenCalledTimes(2)
     expect(firstResources.userUniformBuffer.destroy).toHaveBeenCalledTimes(1)
     expect(firstResources.viewportOriginBuffer.destroy).toHaveBeenCalledTimes(1)
@@ -710,12 +710,12 @@ describe('PreviewPane WebGPU integration', () => {
     expect(getRenderFlipbookCallCount()).toBe(renderCountBefore + 1)
   })
 
-  it('does not redraw flipbook after a successful Run compile in animation mode', async () => {
+  it('does not redraw flipbook after a successful Run compile in live mode', async () => {
     installRafMock()
     const gpu = createWebGpuMock()
     const props = {
       code: defaultShader,
-      previewMode: 'animation' as const,
+      previewMode: 'live' as const,
       flipbook: initialFlipbookSettings,
       onPreviewModeChange: vi.fn(),
       onFlipbookChange: vi.fn(),
@@ -869,7 +869,7 @@ describe('PreviewPane WebGPU integration', () => {
     const onCompileSuccess = vi.fn()
     const props = {
       code: defaultShader,
-      previewMode: 'animation' as const,
+      previewMode: 'live' as const,
       flipbook: initialFlipbookSettings,
       onPreviewModeChange: vi.fn(),
       onFlipbookChange: vi.fn(),

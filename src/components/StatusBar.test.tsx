@@ -7,7 +7,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar
         compileStatus="success"
-        previewMode="animation"
+        previewMode="live"
         fps={59.95}
         resolution={{ width: 1280, height: 720 }}
         gpuName="Integrated GPU"
@@ -30,7 +30,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar
         compileStatus={compileStatus}
-        previewMode="animation"
+        previewMode="live"
         fps={0}
         resolution={{ width: 0, height: 0 }}
       />,
@@ -39,11 +39,11 @@ describe('StatusBar', () => {
     expect(screen.getByText(text)).toHaveClass(className)
   })
 
-  it('renders live FPS in animation mode', () => {
+  it('renders live FPS in live mode', () => {
     render(
       <StatusBar
         compileStatus="success"
-        previewMode="animation"
+        previewMode="live"
         fps={29.94}
         resolution={{ width: 640, height: 360 }}
       />,

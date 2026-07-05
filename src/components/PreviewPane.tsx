@@ -170,12 +170,12 @@ export function PreviewPane({
     onGpuInfo,
   }
 
-  const stopAnimationLoop = useCallback(() => {
+  const stopLiveLoop = useCallback(() => {
     renderLoopRef.current?.stop()
     renderLoopRef.current = null
   }, [])
 
-  const startAnimationLoop = useCallback(() => {
+  const startLiveLoop = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !gpuRef.current || deviceLostRef.current || renderLoopRef.current) {
       return
@@ -330,7 +330,7 @@ export function PreviewPane({
       handledPreviewModeChangeRef.current = nextMode
 
       if (nextMode === 'flipbook') {
-        stopAnimationLoop()
+        stopLiveLoop()
         const { normalizedSettings } = commitFlipbookDraft(flipbookDraftRef.current)
         callbacksRef.current.onPreviewModeChange('flipbook')
         flipbookRef.current = normalizedSettings
@@ -341,16 +341,16 @@ export function PreviewPane({
       cancelPendingFlipbookRender()
       destroyLatestFlipbookResources()
       setLatestGrid(null)
-      callbacksRef.current.onPreviewModeChange('animation')
-      startAnimationLoop()
+      callbacksRef.current.onPreviewModeChange('live')
+      startLiveLoop()
     },
     [
       cancelPendingFlipbookRender,
       commitFlipbookDraft,
       destroyLatestFlipbookResources,
       scheduleFlipbookRender,
-      startAnimationLoop,
-      stopAnimationLoop,
+      startLiveLoop,
+      stopLiveLoop,
     ],
   )
 
@@ -412,23 +412,23 @@ export function PreviewPane({
     previewModeRef.current = previewMode
     displayGenerationRef.current += 1
 
-    if (previewMode === 'animation') {
+    if (previewMode === 'live') {
       cancelPendingFlipbookRender()
       destroyLatestFlipbookResources()
       setLatestGrid(null)
-      startAnimationLoop()
+      startLiveLoop()
       return
     }
 
-    stopAnimationLoop()
+    stopLiveLoop()
     scheduleFlipbookRender('mode-change')
   }, [
     cancelPendingFlipbookRender,
     destroyLatestFlipbookResources,
     previewMode,
     scheduleFlipbookRender,
-    startAnimationLoop,
-    stopAnimationLoop,
+    startLiveLoop,
+    stopLiveLoop,
   ])
 
   useEffect(() => {
@@ -492,8 +492,8 @@ export function PreviewPane({
           return
         }
 
-        if (previewModeRef.current === 'animation') {
-          startAnimationLoop()
+        if (previewModeRef.current === 'live') {
+          startLiveLoop()
         } else {
           scheduleFlipbookRender('initial')
         }
@@ -505,7 +505,7 @@ export function PreviewPane({
 
           deviceLostRef.current = true
           displayGenerationRef.current += 1
-          stopAnimationLoop()
+          stopLiveLoop()
           cancelPendingFlipbookRender()
           destroyLatestFlipbookResources()
           setPreviewMessage(deviceLostMessage)
@@ -524,7 +524,7 @@ export function PreviewPane({
     return () => {
       lifecycleGenerationRef.current += 1
       displayGenerationRef.current += 1
-      stopAnimationLoop()
+      stopLiveLoop()
       cancelPendingFlipbookRender()
       destroyLatestFlipbookResources()
       resizeObserver?.disconnect()
@@ -536,8 +536,8 @@ export function PreviewPane({
     compile,
     destroyLatestFlipbookResources,
     scheduleFlipbookRender,
-    startAnimationLoop,
-    stopAnimationLoop,
+    startLiveLoop,
+    stopLiveLoop,
   ])
 
   useEffect(() => {

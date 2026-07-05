@@ -8,7 +8,7 @@ export type PreviewModeControlProps = {
 }
 
 const modes: Array<{ value: PreviewMode; label: string }> = [
-  { value: 'animation', label: 'Animation' },
+  { value: 'live', label: 'Live' },
   { value: 'flipbook', label: 'Flipbook' },
 ]
 

@@ -8,7 +8,7 @@ import { initialFlipbookSettings, initialPreviewMode } from './types/preview'
 
 describe('flipbook settings defaults', () => {
   it('defines the initial preview mode and flipbook settings', () => {
-    expect(initialPreviewMode).toBe('animation')
+    expect(initialPreviewMode).toBe('live')
     expect(initialFlipbookSettings).toEqual({
       frameCount: 16,
       frameIntervalMs: 100,

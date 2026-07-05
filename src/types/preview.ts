@@ -1,4 +1,4 @@
-export type PreviewMode = 'animation' | 'flipbook'
+export type PreviewMode = 'live' | 'flipbook'
 
 export type FlipbookSettings = {
   frameCount: number
@@ -6,7 +6,7 @@ export type FlipbookSettings = {
   startTimeMs: number
 }
 
-export const initialPreviewMode: PreviewMode = 'animation'
+export const initialPreviewMode: PreviewMode = 'live'
 
 export const initialFlipbookSettings: FlipbookSettings = {
   frameCount: 16,
