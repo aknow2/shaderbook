@@ -7,7 +7,7 @@
 
 ## Phase 1: 共有型・正規化・client error 互換
 
-- [ ] **C1-1: agent / model / performance 共有型と後方互換正規化**（plan §3, §4, §13.1, §14 Phase 1 / spec §6.1, §6.2, §6.3, §9）
+- [x] **C1-1: agent / model / performance 共有型と後方互換正規化**（plan §3, §4, §13.1, §14 Phase 1 / spec §6.1, §6.2, §6.3, §9）
   - 対象ファイル:
     - 実装: `src/aiChat/types.ts`, `src/aiChat/state.ts`
     - テスト: `src/aiChat/state.test.ts`
@@ -33,7 +33,7 @@
     - 履歴 item に `agent` / `model` / `performance` を追加しない
     - 共有型に DOM / React / Node 固有 API を置かない
 
-- [ ] **C1-2: 新旧 error code と表示文言の互換対応**（plan §3.1, §11, §14 Phase 1 / spec §8.7, §9.3, §11.3）
+- [x] **C1-2: 新旧 error code と表示文言の互換対応**（plan §3.1, §11, §14 Phase 1 / spec §8.7, §9.3, §11.3）
   - 対象ファイル:
     - 実装: `src/aiChat/types.ts`, `src/aiChat/client.ts`, `server/aiChat/errors.ts`
     - テスト: `src/aiChat/client.test.ts`, `server/aiChat/handler.test.ts`

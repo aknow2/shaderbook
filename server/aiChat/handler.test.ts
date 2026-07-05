@@ -4,7 +4,11 @@ import { PassThrough } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
 import type { AiChatMessageRequest } from '../../src/aiChat/types.ts'
-import { AiChatServerError } from './errors.ts'
+import {
+  AiChatServerError,
+  createAiChatErrorResponse,
+  getHttpStatusForErrorCode,
+} from './errors.ts'
 import { createAiChatHandler } from './handler.ts'
 import type { RequestRegistry } from './requestRegistry.ts'
 import { createRequestRegistry } from './requestRegistry.ts'
@@ -291,6 +295,32 @@ describe('createAiChatHandler', () => {
     expect(JSON.parse(response.body)).toMatchObject({
       error: {
         code: 'NOT_FOUND',
+      },
+    })
+  })
+})
+
+describe('AI chat server error helpers', () => {
+  it('maps new agent-independent server error codes to HTTP 500', () => {
+    expect(getHttpStatusForErrorCode('CLAUDE_NOT_FOUND')).toBe(500)
+    expect(getHttpStatusForErrorCode('AI_AGENT_FAILED')).toBe(500)
+    expect(getHttpStatusForErrorCode('INVALID_AI_RESPONSE')).toBe(500)
+  })
+
+  it('creates an error response for old CODEX_FAILED compatibility code', () => {
+    expect(createAiChatErrorResponse('CODEX_FAILED')).toEqual({
+      error: {
+        code: 'CODEX_FAILED',
+        message: 'AI chat request failed.',
+      },
+    })
+  })
+
+  it('creates an error response for old INVALID_CODEX_RESPONSE compatibility code', () => {
+    expect(createAiChatErrorResponse('INVALID_CODEX_RESPONSE')).toEqual({
+      error: {
+        code: 'INVALID_CODEX_RESPONSE',
+        message: 'AI returned an invalid response.',
       },
     })
   })

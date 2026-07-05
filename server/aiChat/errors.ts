@@ -24,6 +24,9 @@ export const AI_CHAT_ERROR_STATUS: Record<AiChatErrorCode, number> = {
   TIMEOUT: 408,
   CANCELED: 499,
   CODEX_NOT_FOUND: 500,
+  CLAUDE_NOT_FOUND: 500,
+  AI_AGENT_FAILED: 500,
+  INVALID_AI_RESPONSE: 500,
   CODEX_FAILED: 500,
   INVALID_CODEX_RESPONSE: 500,
   INTERNAL_ERROR: 500,
@@ -36,15 +39,21 @@ export function getDefaultErrorMessage(code: AiChatErrorCode): string {
     case 'NOT_FOUND':
       return 'Not found.'
     case 'TIMEOUT':
-      return 'Codex request timed out.'
+      return 'AI chat request timed out.'
     case 'CANCELED':
       return 'Request canceled.'
     case 'CODEX_NOT_FOUND':
       return 'Codex CLI is not installed or not found in PATH.'
+    case 'CLAUDE_NOT_FOUND':
+      return 'Claude CLI is not installed or not found in PATH.'
+    case 'AI_AGENT_FAILED':
+      return 'AI chat request failed.'
+    case 'INVALID_AI_RESPONSE':
+      return 'AI returned an invalid response.'
     case 'CODEX_FAILED':
       return 'AI chat request failed.'
     case 'INVALID_CODEX_RESPONSE':
-      return 'Codex returned an invalid response.'
+      return 'AI returned an invalid response.'
     case 'INTERNAL_ERROR':
       return 'Internal server error.'
   }

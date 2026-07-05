@@ -110,12 +110,16 @@ function getDisplayMessageForErrorCode(code: AiChatErrorCode): string {
   switch (code) {
     case 'CODEX_NOT_FOUND':
       return 'Codex CLI is not installed or not found in PATH.'
+    case 'CLAUDE_NOT_FOUND':
+      return 'Claude CLI is not installed or not found in PATH.'
     case 'TIMEOUT':
-      return 'Codex request timed out.'
+      return 'AI chat request timed out.'
     case 'CANCELED':
       return 'Request canceled.'
+    case 'INVALID_AI_RESPONSE':
     case 'INVALID_CODEX_RESPONSE':
-      return 'Codex returned an invalid response.'
+      return 'AI returned an invalid response.'
+    case 'AI_AGENT_FAILED':
     case 'CODEX_FAILED':
     case 'INVALID_REQUEST':
     case 'NOT_FOUND':

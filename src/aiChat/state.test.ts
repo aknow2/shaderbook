@@ -1,16 +1,29 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  AI_CHAT_AGENT_OPTIONS,
   AI_CHAT_CLIENT_TIMEOUT_MS,
   AI_CHAT_CODE_MAX_LENGTH,
+  AI_CHAT_DEFAULT_MODEL_BY_AGENT,
+  AI_CHAT_DEFAULT_PERFORMANCE,
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
+  AI_CHAT_MODEL_OPTIONS_BY_AGENT,
+  AI_CHAT_PERFORMANCE_OPTIONS,
   AI_CHAT_REQUEST_ID_MAX_LENGTH,
   AI_CHAT_SERVER_TIMEOUT_MS,
+  normalizeAiChatMessageRequest,
 } from './types'
-import type { AiChatErrorCode } from './types'
+import type {
+  AiChatAgent,
+  AiChatErrorCode,
+  AiChatMessageRequest,
+  AiChatPerformance,
+} from './types'
 import {
   createAiChatId,
   createChatHistory,
+  createInitialSelectedModelByAgent,
+  switchAiChatAgent,
   validateAiChatDraft,
   validateAiChatMessageText,
 } from './state'
@@ -53,6 +66,9 @@ describe('AI chat shared contract constants', () => {
       'TIMEOUT',
       'CANCELED',
       'CODEX_NOT_FOUND',
+      'CLAUDE_NOT_FOUND',
+      'AI_AGENT_FAILED',
+      'INVALID_AI_RESPONSE',
       'CODEX_FAILED',
       'INVALID_CODEX_RESPONSE',
       'INTERNAL_ERROR',
@@ -64,10 +80,127 @@ describe('AI chat shared contract constants', () => {
       'TIMEOUT',
       'CANCELED',
       'CODEX_NOT_FOUND',
+      'CLAUDE_NOT_FOUND',
+      'AI_AGENT_FAILED',
+      'INVALID_AI_RESPONSE',
       'CODEX_FAILED',
       'INVALID_CODEX_RESPONSE',
       'INTERNAL_ERROR',
     ])
+  })
+})
+
+describe('AI chat selection shared contract', () => {
+  it('AiChatAgent can represent codex and claude', () => {
+    const agents = AI_CHAT_AGENT_OPTIONS.map((option) => option.id)
+    const typedAgents = agents satisfies AiChatAgent[]
+
+    expect(typedAgents).toEqual(['codex', 'claude'])
+  })
+
+  it('AiChatPerformance can represent fast, balanced, and deep', () => {
+    const performances = AI_CHAT_PERFORMANCE_OPTIONS.map((option) => option.id)
+    const typedPerformances = performances satisfies AiChatPerformance[]
+
+    expect(typedPerformances).toEqual(['fast', 'balanced', 'deep'])
+  })
+
+  it('uses codex-default as the Codex default model', () => {
+    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex).toBe('codex-default')
+  })
+
+  it('uses claude-default as the Claude default model', () => {
+    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.claude).toBe('claude-default')
+  })
+
+  it('defines model options per agent', () => {
+    expect(AI_CHAT_MODEL_OPTIONS_BY_AGENT.codex.map((option) => option.id)).toEqual([
+      'codex-default',
+      'codex-fast',
+      'codex-deep',
+    ])
+    expect(AI_CHAT_MODEL_OPTIONS_BY_AGENT.claude.map((option) => option.id)).toEqual([
+      'claude-default',
+      'claude-fast',
+      'claude-deep',
+    ])
+  })
+
+  it('normalizes an old request without agent, model, or performance to Codex balanced defaults', () => {
+    expect(normalizeAiChatMessageRequest(messageRequest())).toMatchObject({
+      agent: 'codex',
+      model: 'codex-default',
+      performance: 'balanced',
+    })
+  })
+
+  it('normalizes missing Claude model to claude-default', () => {
+    expect(normalizeAiChatMessageRequest(messageRequest({ agent: 'claude' }))).toMatchObject({
+      agent: 'claude',
+      model: 'claude-default',
+      performance: 'balanced',
+    })
+  })
+
+  it('normalizes missing performance to balanced', () => {
+    expect(
+      normalizeAiChatMessageRequest(
+        messageRequest({ agent: 'codex', model: 'codex-fast' }),
+      ),
+    ).toMatchObject({
+      agent: 'codex',
+      model: 'codex-fast',
+      performance: AI_CHAT_DEFAULT_PERFORMANCE,
+    })
+  })
+
+  it('rejects omitted agent with a Claude model', () => {
+    expect(() =>
+      normalizeAiChatMessageRequest(messageRequest({ model: 'claude-default' })),
+    ).toThrow('AI chat model is not available for the selected agent.')
+  })
+
+  it('rejects codex agent with a Claude model', () => {
+    expect(() =>
+      normalizeAiChatMessageRequest(
+        messageRequest({ agent: 'codex', model: 'claude-default' }),
+      ),
+    ).toThrow('AI chat model is not available for the selected agent.')
+  })
+
+  it('rejects claude agent with a Codex model', () => {
+    expect(() =>
+      normalizeAiChatMessageRequest(
+        messageRequest({ agent: 'claude', model: 'codex-default' }),
+      ),
+    ).toThrow('AI chat model is not available for the selected agent.')
+  })
+
+  it('initializes selectedModelByAgent with each agent default model', () => {
+    expect(createInitialSelectedModelByAgent()).toEqual({
+      codex: 'codex-default',
+      claude: 'claude-default',
+    })
+  })
+
+  it('keeps performance when switching agents', () => {
+    expect(
+      switchAiChatAgent(
+        {
+          selectedAgent: 'codex',
+          selectedModelByAgent: createInitialSelectedModelByAgent(),
+          selectedPerformance: 'deep',
+        },
+        'claude',
+      ),
+    ).toEqual({
+      selectedAgent: 'claude',
+      selectedModelByAgent: {
+        codex: 'codex-default',
+        claude: 'claude-default',
+      },
+      selectedPerformance: 'deep',
+    })
   })
 })
 
@@ -173,6 +306,23 @@ describe('AI chat state helpers', () => {
     expect(historyItem).not.toHaveProperty('applied')
   })
 
+  it('excludes selection state from history', () => {
+    const [historyItem] = createChatHistory([
+      {
+        ...chatMessage('assistant', 'Use this shader', {
+          proposedCode: 'code',
+        }),
+        agent: 'claude',
+        model: 'claude-default',
+        performance: 'deep',
+      } as ChatMessage,
+    ])
+
+    expect(historyItem).not.toHaveProperty('agent')
+    expect(historyItem).not.toHaveProperty('model')
+    expect(historyItem).not.toHaveProperty('performance')
+  })
+
   it('generates request id with crypto.randomUUID()', () => {
     const randomUUID = vi.fn(() => 'request-id')
     vi.stubGlobal('crypto', { randomUUID })
@@ -203,5 +353,23 @@ function chatMessage(
     applied: false,
     createdAt: 0,
     ...overrides,
+  }
+}
+
+function messageRequest(
+  overrides: Partial<AiChatMessageRequest> = {},
+): AiChatMessageRequest {
+  return {
+    ...baseMessageRequest(),
+    ...overrides,
+  }
+}
+
+function baseMessageRequest(): AiChatMessageRequest {
+  return {
+    requestId: 'request-1',
+    message: 'Help',
+    code: '@fragment fn main() -> @location(0) vec4f { return vec4f(1); }',
+    history: [],
   }
 }

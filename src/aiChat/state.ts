@@ -1,9 +1,16 @@
 import {
   AI_CHAT_CODE_MAX_LENGTH,
+  AI_CHAT_DEFAULT_MODEL_BY_AGENT,
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
 } from './types'
-import type { ChatHistoryItem } from './types'
+import type {
+  AiChatAgent,
+  AiChatCodexModel,
+  AiChatClaudeModel,
+  AiChatPerformance,
+  ChatHistoryItem,
+} from './types'
 
 export type ChatMessage = {
   id: string
@@ -23,6 +30,17 @@ export type AiChatValidationResult = {
 export type AiChatDraft = {
   message: string
   code: string
+}
+
+export type SelectedModelByAgent = {
+  codex: AiChatCodexModel
+  claude: AiChatClaudeModel
+}
+
+export type AiChatSelectionState = {
+  selectedAgent: AiChatAgent
+  selectedModelByAgent: SelectedModelByAgent
+  selectedPerformance: AiChatPerformance
 }
 
 const VALID_RESULT: AiChatValidationResult = {
@@ -89,6 +107,23 @@ export function createChatHistory(messages: ChatMessage[]): ChatHistoryItem[] {
       }
     })
     .slice(-AI_CHAT_HISTORY_MAX_ITEMS)
+}
+
+export function createInitialSelectedModelByAgent(): SelectedModelByAgent {
+  return {
+    codex: AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex,
+    claude: AI_CHAT_DEFAULT_MODEL_BY_AGENT.claude,
+  }
+}
+
+export function switchAiChatAgent(
+  state: AiChatSelectionState,
+  nextAgent: AiChatAgent,
+): AiChatSelectionState {
+  return {
+    ...state,
+    selectedAgent: nextAgent,
+  }
 }
 
 export function createAiChatId(): string {

@@ -39,10 +39,10 @@ describe('AI chat fetch client', () => {
     )
   })
 
-  it('maps 408 TIMEOUT to Codex request timed out.', async () => {
+  it('maps 408 TIMEOUT to AI chat request timed out.', async () => {
     stubFetch(errorResponse(408, 'TIMEOUT', 'server timeout'))
 
-    await expectDisplayError(sendAiChatMessage(messageRequest()), 'Codex request timed out.')
+    await expectDisplayError(sendAiChatMessage(messageRequest()), 'AI chat request timed out.')
   })
 
   it('maps 499 CANCELED to Request canceled.', async () => {
@@ -60,13 +60,37 @@ describe('AI chat fetch client', () => {
     )
   })
 
-  it('maps 500 INVALID_CODEX_RESPONSE to Codex returned an invalid response.', async () => {
+  it('maps 500 CLAUDE_NOT_FOUND to Claude CLI is not installed or not found in PATH.', async () => {
+    stubFetch(errorResponse(500, 'CLAUDE_NOT_FOUND', 'server missing claude'))
+
+    await expectDisplayError(
+      sendAiChatMessage(messageRequest()),
+      'Claude CLI is not installed or not found in PATH.',
+    )
+  })
+
+  it('maps 500 INVALID_AI_RESPONSE to AI returned an invalid response.', async () => {
+    stubFetch(errorResponse(500, 'INVALID_AI_RESPONSE', 'server invalid ai'))
+
+    await expectDisplayError(
+      sendAiChatMessage(messageRequest()),
+      'AI returned an invalid response.',
+    )
+  })
+
+  it('maps 500 INVALID_CODEX_RESPONSE to AI returned an invalid response.', async () => {
     stubFetch(errorResponse(500, 'INVALID_CODEX_RESPONSE', 'server invalid codex'))
 
     await expectDisplayError(
       sendAiChatMessage(messageRequest()),
-      'Codex returned an invalid response.',
+      'AI returned an invalid response.',
     )
+  })
+
+  it('maps 500 AI_AGENT_FAILED to AI chat request failed.', async () => {
+    stubFetch(errorResponse(500, 'AI_AGENT_FAILED', 'server failed ai'))
+
+    await expectDisplayError(sendAiChatMessage(messageRequest()), 'AI chat request failed.')
   })
 
   it('maps 500 CODEX_FAILED to AI chat request failed.', async () => {
