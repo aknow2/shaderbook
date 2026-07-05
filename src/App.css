@@ -67,8 +67,10 @@
 }
 
 .preview-tools {
+  flex: 1;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .button,
@@ -204,11 +206,16 @@ kbd {
 }
 
 .preview-header {
+  align-items: flex-start;
   gap: 12px;
   height: auto;
   min-height: 46px;
   padding-top: 7px;
   padding-bottom: 7px;
+}
+
+.preview-header h2 {
+  line-height: 30px;
 }
 
 .control-button,
@@ -237,6 +244,7 @@ kbd {
 
 .preview-mode-control {
   display: inline-flex;
+  flex: 0 0 auto;
   height: 30px;
   overflow: hidden;
   border: 1px solid var(--color-border-strong);
@@ -271,9 +279,11 @@ kbd {
 
 .flipbook-controls {
   display: inline-flex;
+  flex: 0 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .flipbook-control {
@@ -301,27 +311,24 @@ kbd {
   flex: 1;
   min-height: 0;
   padding: 14px;
-  background:
-    radial-gradient(circle at center, rgba(139, 92, 246, 0.12), transparent 46%),
-    #090b10;
+  background: var(--color-bg);
 }
 
 .canvas-frame canvas {
   display: block;
+  grid-area: 1 / 1;
   width: 100%;
   height: 100%;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(34, 211, 238, 0.18), transparent 32%),
-    linear-gradient(315deg, rgba(139, 92, 246, 0.18), transparent 36%),
-    #05070b;
+  background: var(--color-code-bg);
   box-shadow: var(--shadow-panel);
 }
 
 .flipbook-labels {
   position: absolute;
   inset: 14px;
+  z-index: 1;
 }
 
 .flipbook-label {
@@ -348,7 +355,7 @@ kbd {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   color: var(--color-text-muted);
-  background: #05070b;
+  background: var(--color-code-bg);
   font-size: 14px;
   text-align: center;
   white-space: pre-line;

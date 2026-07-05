@@ -238,7 +238,7 @@
 
 ## Phase 5: App / StatusBar 統合
 
-- [ ] **F5-1: App state と既存操作の Flipbook 統合**（plan §12, §13.9, §14 Phase 5 / spec §12, §13.1）
+- [x] **F5-1: App state と既存操作の Flipbook 統合**（plan §12, §13.9, §14 Phase 5 / spec §12, §13.1）
   - 対象ファイル:
     - 実装: `src/App.tsx`
     - テスト: `src/App.test.tsx`
@@ -256,7 +256,7 @@
     - Reset 押下だけでは Flipbook settings と表示を変更しない
     - Save 押下では Flipbook settings / 画像を保存せず WGSL コードだけを保存する
 
-- [ ] **F5-2: StatusBar の FPS Paused 表示**（plan §12, §13.9, §14 Phase 5 / spec §11.3, §13.3）
+- [x] **F5-2: StatusBar の FPS Paused 表示**（plan §12, §13.9, §14 Phase 5 / spec §11.3, §13.3）
   - 対象ファイル:
     - 実装: `src/components/StatusBar.tsx`
     - テスト: `src/components/StatusBar.test.tsx`
@@ -269,7 +269,7 @@
     - Flipbook mode では内部の旧 FPS 値に関係なく `Paused` と表示する
     - Compile status、Resolution、GPU 名、Backend、WGSL 表示が退行していない
 
-- [ ] **F5-3: Preview ツールバー / Flipbook 表示スタイル仕上げ**（plan §10.6, §14 Phase 5 / spec §8, §9.6, §19）
+- [x] **F5-3: Preview ツールバー / Flipbook 表示スタイル仕上げ**（plan §10.6, §14 Phase 5 / spec §8, §9.6, §19）
   - 対象ファイル:
     - 実装: `src/App.css`
     - テスト: `src/components/PreviewPane.test.tsx`, `src/components/FlipbookLabels.test.tsx`
@@ -287,7 +287,7 @@
 
 ## Phase 6: 手動確認と仕上げ
 
-- [ ] **F6-1: 全自動テスト / tsc / build**（plan §14 Phase 6 / spec §23 自動テスト）
+- [x] **F6-1: 全自動テスト / tsc / build**（plan §14 Phase 6 / spec §23 自動テスト）
   - 対象ファイル:
     - 実装: なし（検証のみ）
     - テスト: 全テスト

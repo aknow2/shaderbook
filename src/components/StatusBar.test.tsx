@@ -7,6 +7,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar
         compileStatus="success"
+        previewMode="animation"
         fps={59.95}
         resolution={{ width: 1280, height: 720 }}
         gpuName="Integrated GPU"
@@ -29,11 +30,44 @@ describe('StatusBar', () => {
     render(
       <StatusBar
         compileStatus={compileStatus}
+        previewMode="animation"
         fps={0}
         resolution={{ width: 0, height: 0 }}
       />,
     )
 
     expect(screen.getByText(text)).toHaveClass(className)
+  })
+
+  it('renders live FPS in animation mode', () => {
+    render(
+      <StatusBar
+        compileStatus="success"
+        previewMode="animation"
+        fps={29.94}
+        resolution={{ width: 640, height: 360 }}
+      />,
+    )
+
+    expect(screen.getByText('FPS: 29.9')).toBeInTheDocument()
+  })
+
+  it('renders FPS as paused in flipbook mode while keeping the other status items', () => {
+    render(
+      <StatusBar
+        compileStatus="error"
+        previewMode="flipbook"
+        fps={59.95}
+        resolution={{ width: 800, height: 600 }}
+        gpuName="Discrete GPU"
+      />,
+    )
+
+    expect(screen.getByText('Compile: Error')).toBeInTheDocument()
+    expect(screen.getByText('FPS: Paused')).toBeInTheDocument()
+    expect(screen.getByText('Resolution: 800 x 600')).toBeInTheDocument()
+    expect(screen.getByText('GPU: Discrete GPU')).toBeInTheDocument()
+    expect(screen.getByText('Backend: WebGPU')).toBeInTheDocument()
+    expect(screen.getByText('WGSL')).toBeInTheDocument()
   })
 })
