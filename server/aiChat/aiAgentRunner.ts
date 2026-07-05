@@ -1,6 +1,6 @@
 import type { NormalizedAiChatMessageRequest } from '../../src/aiChat/types.ts'
+import { runClaude } from './claudeRunner.ts'
 import { runCodex } from './codexRunner.ts'
-import { AiChatServerError } from './errors.ts'
 import {
   getAiChatAgentCommand,
   getAiChatModelArgs,
@@ -58,8 +58,9 @@ function getCodexRunner(dependencies: AiChatRunnerDependencies): AiChatAgentRunn
 function getClaudeRunner(dependencies: AiChatRunnerDependencies): AiChatAgentRunner {
   return (
     dependencies.claudeRunner ??
-    (async () => {
-      throw new AiChatServerError('INTERNAL_ERROR')
-    })
+    ((request, runnerDependencies) =>
+      runClaude(request, {
+        registry: runnerDependencies.registry,
+      }))
   )
 }

@@ -206,7 +206,7 @@
 
 ## Phase 5: Claude runner 追加
 
-- [ ] **C5-1: Claude runner の spawn / stdin / stdout parse と安全制約**（plan §7.3, §8.2, §12, §14 Phase 5 / spec §6.4, §11.2）
+- [x] **C5-1: Claude runner の spawn / stdin / stdout parse と安全制約**（plan §7.3, §8.2, §12, §14 Phase 5 / spec §6.4, §11.2）
   - 対象ファイル:
     - 実装: `server/aiChat/claudeRunner.ts`, `server/aiChat/agentConfig.ts`
     - テスト: `server/aiChat/claudeRunner.test.ts`
@@ -228,7 +228,7 @@
     - 実 Claude CLI を unit test で起動しない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **C5-2: Claude runner の mapping / error / requestRegistry 非依存 cancel**（plan §7.3, §8.2, §10, §13.5, §14 Phase 5 / spec §6.2, §6.3, §9.3）
+- [x] **C5-2: Claude runner の mapping / error / requestRegistry 非依存 cancel**（plan §7.3, §8.2, §10, §13.5, §14 Phase 5 / spec §6.2, §6.3, §9.3）
   - 対象ファイル:
     - 実装: `server/aiChat/claudeRunner.ts`, `server/aiChat/agentConfig.ts`, `server/aiChat/aiAgentRunner.ts`
     - テスト: `server/aiChat/claudeRunner.test.ts`, `server/aiChat/aiAgentRunner.test.ts`

@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import type { NormalizedAiChatMessageRequest } from '../../src/aiChat/types.ts'
 import {
@@ -10,6 +11,27 @@ import {
 } from './agentConfig.ts'
 import { runAiChatAgent } from './aiAgentRunner.ts'
 import { createRequestRegistry } from './requestRegistry.ts'
+
+const spawnMock = vi.hoisted(() => vi.fn())
+
+vi.mock('node:child_process', () => ({
+  spawn: spawnMock,
+}))
+
+class DefaultDispatchFakeChild extends EventEmitter {
+  readonly stdin = {
+    write: vi.fn<(prompt: string) => boolean>(() => true),
+    end: vi.fn<() => void>(),
+  }
+
+  readonly stdout = new EventEmitter()
+  readonly stderr = new EventEmitter()
+  readonly kill = vi.fn<() => boolean>(() => true)
+
+  close(code: number): void {
+    this.emit('close', code, null)
+  }
+}
 
 function normalizedRequest(
   overrides: Partial<NormalizedAiChatMessageRequest> = {},
@@ -89,6 +111,46 @@ describe('runAiChatAgent', () => {
 
     expect(codexRunner).not.toHaveBeenCalled()
     expect(claudeRunner).toHaveBeenCalledTimes(1)
+  })
+
+  it('dispatches agent claude to the default Claude runner', async () => {
+    const child = new DefaultDispatchFakeChild()
+    spawnMock.mockReturnValueOnce(child)
+
+    const promise = runAiChatAgent(
+      normalizedRequest({
+        agent: 'claude',
+        model: 'claude-default',
+      }),
+      {
+        registry: createRequestRegistry(),
+      },
+    )
+
+    await vi.waitFor(() => {
+      expect(spawnMock).toHaveBeenCalledTimes(1)
+    })
+
+    child.stdout.emit(
+      'data',
+      JSON.stringify({
+        message: 'claude answer',
+        proposedCode: null,
+        notes: [],
+      }),
+    )
+    child.close(0)
+
+    await expect(promise).resolves.toEqual({
+      message: 'claude answer',
+      proposedCode: null,
+      notes: [],
+    })
+    expect(spawnMock).toHaveBeenCalledWith(
+      'claude',
+      expect.arrayContaining(['--print']),
+      expect.objectContaining({ shell: false }),
+    )
   })
 
   it('throws INTERNAL_ERROR when a validated-looking value has no mapping', async () => {
