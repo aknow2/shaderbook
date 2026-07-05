@@ -73,6 +73,7 @@ function createGpuState(pipeline: GPURenderPipeline | null): {
     device: device as unknown as GPUDevice,
     context: context as unknown as GPUCanvasContext,
     uniformBuffer: {} as GPUBuffer,
+    viewportOriginBuffer: {} as GPUBuffer,
   }
 
   return {
@@ -136,6 +137,25 @@ describe('startRenderLoop', () => {
       'finish',
       'submit',
     ])
+  })
+
+  it('does not write viewport origin during the animation loop', () => {
+    const raf = installRafMock()
+    const { state } = createGpuState({ label: 'pipeline' } as unknown as GPURenderPipeline)
+
+    startRenderLoop({
+      getGpuState: () => state,
+      getResolution: () => ({ width: 800, height: 600 }),
+      onFpsChange: vi.fn(),
+    })
+    raf.runFrame()
+
+    expect(state.device.queue.writeBuffer).toHaveBeenCalledTimes(1)
+    expect(state.device.queue.writeBuffer).toHaveBeenCalledWith(
+      state.uniformBuffer,
+      0,
+      expect.any(Float32Array),
+    )
   })
 
   it('does not advance frames after stop', () => {

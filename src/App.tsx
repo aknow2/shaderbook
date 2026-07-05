@@ -6,6 +6,7 @@ import { Header } from './components/Header'
 import { PreviewPane } from './components/PreviewPane'
 import { StatusBar, type CompileStatus } from './components/StatusBar'
 import { defaultShader } from './constants/defaultShader'
+import { initialFlipbookSettings } from './types/preview'
 
 type Resolution = {
   width: number
@@ -78,6 +79,10 @@ function App() {
         <PreviewPane
           code={code}
           shouldCompile={shouldCompile}
+          previewMode="animation"
+          flipbook={initialFlipbookSettings}
+          onPreviewModeChange={() => {}}
+          onFlipbookChange={() => {}}
           onCompileSuccess={() => {
             setCompileStatus('success')
             setErrorMessage(null)

@@ -125,7 +125,7 @@
 
 ## Phase 3: renderFlipbook
 
-- [ ] **F3-1: Flipbook grid / time 計算**（plan §9.1, §9.2, §13.5, §14 Phase 3 / spec §7, §9）
+- [x] **F3-1: Flipbook grid / time 計算**（plan §9.1, §9.2, §13.5, §14 Phase 3 / spec §7, §9）
   - 対象ファイル:
     - 実装: `src/gpu/renderFlipbook.ts`
     - テスト: `src/gpu/renderFlipbook.test.ts`
@@ -141,7 +141,7 @@
     - `FlipbookGrid` / `FlipbookCell` が label overlay と GPU 描画で共有できる
     - グリッドは左上から右下への行優先で、列数は `ceil(sqrt(frameCount))`、行数は `ceil(frameCount / columns)`
 
-- [ ] **F3-2: Flipbook GPU resources / draw 実装**（plan §9.3, §9.4, §13.5, §14 Phase 3 / spec §10.2, §10.3, §15.2）
+- [x] **F3-2: Flipbook GPU resources / draw 実装**（plan §9.3, §9.4, §13.5, §14 Phase 3 / spec §10.2, §10.3, §15.2）
   - 対象ファイル:
     - 実装: `src/gpu/renderFlipbook.ts`
     - テスト: `src/gpu/renderFlipbook.test.ts`
@@ -164,7 +164,7 @@
 
 ## Phase 4: renderLoop / PreviewPane 統合
 
-- [ ] **F4-1: renderLoop の viewportOriginBuffer 型対応**（plan §8, §13.6, §14 Phase 4 / spec §11.1, §15.1）
+- [x] **F4-1: renderLoop の viewportOriginBuffer 型対応**（plan §8, §13.6, §14 Phase 4 / spec §11.1, §15.1）
   - 対象ファイル:
     - 実装: `src/gpu/renderLoop.ts`
     - テスト: `src/gpu/renderLoop.test.ts`
@@ -179,7 +179,7 @@
     - 通常アニメーションの binding(1) は PreviewPane 初期化時に `(0, 0)` を 1 回書く前提で、renderLoop は毎フレーム更新しない
     - 既存 animation mode の描画、FPS 計測、停止処理が退行していない
 
-- [ ] **F4-2: PreviewPane props / refs / UI 下地統合**（plan §10.1, §10.2, §10.6, §13.8, §14 Phase 4 / spec §8, §13.2, §18, §19）
+- [x] **F4-2: PreviewPane props / refs / UI 下地統合**（plan §10.1, §10.2, §10.6, §13.8, §14 Phase 4 / spec §8, §13.2, §18, §19）
   - 対象ファイル:
     - 実装: `src/components/PreviewPane.tsx`
     - テスト: `src/components/PreviewPane.test.tsx`
@@ -196,7 +196,7 @@
     - `flipbookDraft` は PreviewPane 内だけに保持し、App へは正規化済み settings のみ渡す
     - Preview ヘッダー内の順序が `Preview [Animation|Flipbook] [Flipbook inputs] [Fit] [Fullscreen]` になる
 
-- [ ] **F4-3: PreviewPane の mode 切替 / 6トリガー / coalescing**（plan §10.2, §10.3, §10.4, §13.8, §14 Phase 4 / spec §11.2, §18.1, §18.3）
+- [x] **F4-3: PreviewPane の mode 切替 / 6トリガー / coalescing**（plan §10.2, §10.3, §10.4, §13.8, §14 Phase 4 / spec §11.2, §18.1, §18.3）
   - 対象ファイル:
     - 実装: `src/components/PreviewPane.tsx`
     - テスト: `src/components/PreviewPane.test.tsx`
@@ -214,7 +214,7 @@
     - spec §11.2 の6トリガー（mode 切替、settings 確定、Run成功、resize、fullscreenchange、初回描画）がテストで確認される
     - `animation -> flipbook` と Run 時は未確定 draft を正規化し、先に `flipbookRef.current = normalizedSettings` を同期更新してから App callback / redraw を進める
 
-- [ ] **F4-4: PreviewPane の compile / race / resource destroy 対応**（plan §10.5, §13.8, §15.3-§15.6, §14 Phase 4 / spec §12, §18.2, §18.4）
+- [x] **F4-4: PreviewPane の compile / race / resource destroy 対応**（plan §10.5, §13.8, §15.3-§15.6, §14 Phase 4 / spec §12, §18.2, §18.4）
   - 対象ファイル:
     - 実装: `src/components/PreviewPane.tsx`
     - テスト: `src/components/PreviewPane.test.tsx`

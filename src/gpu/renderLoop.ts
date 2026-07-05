@@ -4,6 +4,7 @@ export type RenderLoopGpuState = {
   device: GPUDevice
   context: GPUCanvasContext
   uniformBuffer: GPUBuffer
+  viewportOriginBuffer: GPUBuffer
 } & (
   | { pipeline: null; bindGroup: null }
   | { pipeline: GPURenderPipeline; bindGroup: GPUBindGroup }
