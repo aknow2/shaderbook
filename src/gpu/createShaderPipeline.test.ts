@@ -35,6 +35,7 @@ function createDeviceMock(options?: {
 describe('createShaderPipeline', () => {
   it('returns a pipeline and bind group on success', async () => {
     const uniformBuffer = { label: 'uniform buffer' } as unknown as GPUBuffer
+    const viewportOriginBuffer = { label: 'viewport origin buffer' } as unknown as GPUBuffer
     const { device, pipeline, bindGroup, bindGroupLayout } = createDeviceMock()
 
     await expect(
@@ -43,6 +44,7 @@ describe('createShaderPipeline', () => {
         format: 'bgra8unorm',
         wgsl: 'wrapped wgsl',
         uniformBuffer,
+        viewportOriginBuffer,
       }),
     ).resolves.toEqual({ pipeline, bindGroup })
 
@@ -60,7 +62,10 @@ describe('createShaderPipeline', () => {
     expect(pipeline.getBindGroupLayout).toHaveBeenCalledWith(0)
     expect(device.createBindGroup).toHaveBeenCalledWith({
       layout: bindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: viewportOriginBuffer } },
+      ],
     })
     expect(device.pushErrorScope).toHaveBeenCalledTimes(2)
     expect(device.popErrorScope).toHaveBeenCalledTimes(2)
@@ -77,6 +82,7 @@ describe('createShaderPipeline', () => {
         format: 'bgra8unorm',
         wgsl: 'broken wgsl',
         uniformBuffer: {} as GPUBuffer,
+        viewportOriginBuffer: {} as GPUBuffer,
       }),
     ).rejects.toThrow('bad shader')
     expect(device.pushErrorScope).not.toHaveBeenCalled()
@@ -94,6 +100,7 @@ describe('createShaderPipeline', () => {
         format: 'bgra8unorm',
         wgsl: 'wrapped wgsl',
         uniformBuffer: {} as GPUBuffer,
+        viewportOriginBuffer: {} as GPUBuffer,
       }),
     ).rejects.toThrow('pipeline invalid')
   })
@@ -109,6 +116,7 @@ describe('createShaderPipeline', () => {
         format: 'bgra8unorm',
         wgsl: 'wrapped wgsl',
         uniformBuffer: {} as GPUBuffer,
+        viewportOriginBuffer: {} as GPUBuffer,
       }),
     ).rejects.toThrow('bind group invalid')
   })
@@ -124,6 +132,7 @@ describe('createShaderPipeline', () => {
         format: 'bgra8unorm',
         wgsl: 'wrapped wgsl',
         uniformBuffer: {} as GPUBuffer,
+        viewportOriginBuffer: {} as GPUBuffer,
       }),
     ).rejects.toThrow('createBindGroup exploded')
 

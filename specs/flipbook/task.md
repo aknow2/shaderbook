@@ -7,7 +7,7 @@
 
 ## Phase 1: 型・正規化・UI 単体
 
-- [ ] **F1-1: Preview 型と Flipbook 正規化ロジック**（plan §3, §4, §13.1, §14 Phase 1 / spec §5, §6, §13）
+- [x] **F1-1: Preview 型と Flipbook 正規化ロジック**（plan §3, §4, §13.1, §14 Phase 1 / spec §5, §6, §13）
   - 対象ファイル:
     - 実装: `src/types/preview.ts`, `src/flipbookSettings.ts`
     - テスト: `src/flipbookSettings.test.ts`
@@ -23,7 +23,7 @@
     - App state に保存可能な値は spec §6.4 通り、正規化済み integer のみになる
     - 正規化ルールが blur / Enter / Run / mode 切替から共通利用できる関数に集約されている
 
-- [ ] **F1-2: PreviewModeControl コンポーネント**（plan §11.1, §13.7, §14 Phase 1 / spec §8.2, §19）
+- [x] **F1-2: PreviewModeControl コンポーネント**（plan §11.1, §13.7, §14 Phase 1 / spec §8.2, §19）
   - 対象ファイル:
     - 実装: `src/components/PreviewModeControl.tsx`
     - テスト: `src/components/PreviewModeControl.test.tsx`
@@ -37,7 +37,7 @@
     - 現在選択中の mode が視覚状態と `aria-pressed` または radio checked で判別できる
     - GPU / App / PreviewPane の副作用を持たない単体 UI として実装されている
 
-- [ ] **F1-3: FlipbookControls コンポーネント**（plan §11.2, §13.7, §14 Phase 1 / spec §6, §8.3, §19）
+- [x] **F1-3: FlipbookControls コンポーネント**（plan §11.2, §13.7, §14 Phase 1 / spec §6, §8.3, §19）
   - 対象ファイル:
     - 実装: `src/components/FlipbookControls.tsx`
     - テスト: `src/components/FlipbookControls.test.tsx`
@@ -52,7 +52,7 @@
     - `onCommit` へ渡る値は常に `FlipbookSettings` の正規化済み integer のみ
     - 正規化ロジックは `src/flipbookSettings.ts` を呼び、コンポーネント内に重複実装しない
 
-- [ ] **F1-4: FlipbookLabels コンポーネント**（plan §11.3, §13.7, §14 Phase 1 / spec §9.6, §19）
+- [x] **F1-4: FlipbookLabels コンポーネント**（plan §11.3, §13.7, §14 Phase 1 / spec §9.6, §19）
   - 対象ファイル:
     - 実装: `src/components/FlipbookLabels.tsx`
     - テスト: `src/components/FlipbookLabels.test.tsx`
@@ -71,7 +71,7 @@
 
 ## Phase 2: wrapper / uniform / pipeline の binding(1) 対応
 
-- [ ] **F2-1: shaderWrapper の viewport origin uniform 注入**（plan §5, §13.2, §14 Phase 2 / spec §10.5, §17）
+- [x] **F2-1: shaderWrapper の viewport origin uniform 注入**（plan §5, §13.2, §14 Phase 2 / spec §10.5, §17）
   - 対象ファイル:
     - 実装: `src/gpu/shaderWrapper.ts`
     - テスト: `src/gpu/shaderWrapper.test.ts`
@@ -87,7 +87,7 @@
     - 通常アニメーションでも Flipbook でも `mainImage` に viewport ローカル座標が渡る
     - ユーザーが binding(1) を使った場合は通常の compile / pipeline エラーとして扱える構造になっている
 
-- [ ] **F2-2: uniform buffer helper の slot / stride 対応**（plan §6, §13.3, §14 Phase 2 / spec §10.3, §10.4, §16）
+- [x] **F2-2: uniform buffer helper の slot / stride 対応**（plan §6, §13.3, §14 Phase 2 / spec §10.3, §10.4, §16）
   - 対象ファイル:
     - 実装: `src/gpu/createUniformBuffer.ts`
     - テスト: `src/gpu/createUniformBuffer.test.ts`
@@ -105,7 +105,7 @@
     - `alignUniformStride` が `minUniformBufferOffsetAlignment` に従う slot stride 計算に使える
     - `resolution` uniform は Flipbook セルの実描画サイズを書ける構造になっている
 
-- [ ] **F2-3: createShaderPipeline の 2 エントリ bind group 対応**（plan §7, §13.4, §14 Phase 2 / spec §10.3, §15.1）
+- [x] **F2-3: createShaderPipeline の 2 エントリ bind group 対応**（plan §7, §13.4, §14 Phase 2 / spec §10.3, §15.1）
   - 対象ファイル:
     - 実装: `src/gpu/createShaderPipeline.ts`
     - テスト: `src/gpu/createShaderPipeline.test.ts`

@@ -17,12 +17,14 @@ describe('wrapShader', () => {
     const { wgsl } = wrapShader({ userCode: defaultShader })
 
     expect(wgsl.startsWith(defaultShader)).toBe(true)
+    expect(wgsl.indexOf('@group(0) @binding(1)')).toBeGreaterThan(defaultShader.length)
+    expect(wgsl.indexOf('wgslpg_viewport_origin')).toBeGreaterThan(defaultShader.length)
     expect(wgsl).toContain('struct VertexOutput')
     expect(wgsl).toContain('@vertex')
     expect(wgsl).toContain('fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput')
     expect(wgsl).toContain('@fragment')
     expect(wgsl).toContain('fn fragmentMain(@builtin(position) position: vec4f) -> @location(0) vec4f')
-    expect(wgsl).toContain('return mainImage(position.xy);')
+    expect(wgsl).toContain('return mainImage(position.xy - wgslpg_viewport_origin);')
   })
 
   it('keeps user code at the start of the generated WGSL', () => {

@@ -7,6 +7,9 @@ export type ShaderWrapperOutput = {
 }
 
 const wrapper = `
+@group(0) @binding(1)
+var<uniform> wgslpg_viewport_origin: vec2f;
+
 struct VertexOutput {
   @builtin(position) position: vec4f,
 }
@@ -26,7 +29,7 @@ fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
 
 @fragment
 fn fragmentMain(@builtin(position) position: vec4f) -> @location(0) vec4f {
-  return mainImage(position.xy);
+  return mainImage(position.xy - wgslpg_viewport_origin);
 }
 `
 

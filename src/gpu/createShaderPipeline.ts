@@ -3,6 +3,7 @@ export type CreatePipelineInput = {
   format: GPUTextureFormat
   wgsl: string
   uniformBuffer: GPUBuffer
+  viewportOriginBuffer: GPUBuffer
 }
 
 export type CreatePipelineOutput = {
@@ -50,6 +51,7 @@ export async function createShaderPipeline({
   format,
   wgsl,
   uniformBuffer,
+  viewportOriginBuffer,
 }: CreatePipelineInput): Promise<CreatePipelineOutput> {
   const shaderModule = device.createShaderModule({ code: wgsl })
   const compilationInfo = await shaderModule.getCompilationInfo()
@@ -84,7 +86,10 @@ export async function createShaderPipeline({
   const bindGroup = await withValidationScope(device, () =>
     device.createBindGroup({
       layout: bindGroupLayout,
-      entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: viewportOriginBuffer } },
+      ],
     }),
   )
 

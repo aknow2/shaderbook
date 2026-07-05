@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createShaderPipeline } from '../gpu/createShaderPipeline'
-import { createUniformBuffer } from '../gpu/createUniformBuffer'
+import {
+  createUniformBuffer,
+  createViewportOriginBuffer,
+  writeViewportOrigin,
+} from '../gpu/createUniformBuffer'
 import { createWebGPUContext } from '../gpu/createWebGPUContext'
 import {
   startRenderLoop,
@@ -18,6 +22,7 @@ type GpuState = {
   context: GPUCanvasContext
   format: GPUTextureFormat
   uniformBuffer: GPUBuffer
+  viewportOriginBuffer: GPUBuffer
 } & (
   | { pipeline: null; bindGroup: null }
   | { pipeline: GPURenderPipeline; bindGroup: GPUBindGroup }
@@ -118,6 +123,7 @@ export function PreviewPane({
         format: currentGpu.format,
         wgsl,
         uniformBuffer: currentGpu.uniformBuffer,
+        viewportOriginBuffer: currentGpu.viewportOriginBuffer,
       })
 
       if (
@@ -216,11 +222,14 @@ export function PreviewPane({
         callbacksRef.current.onGpuInfo(getGpuName(webgpu.adapterInfo))
 
         const uniformBuffer = createUniformBuffer(webgpu.device)
+        const viewportOriginBuffer = createViewportOriginBuffer(webgpu.device)
+        writeViewportOrigin(viewportOriginBuffer, webgpu.device, 0, 0, 0)
         gpuRef.current = {
           device: webgpu.device,
           context: webgpu.context,
           format: webgpu.format,
           uniformBuffer,
+          viewportOriginBuffer,
           pipeline: null,
           bindGroup: null,
         }
