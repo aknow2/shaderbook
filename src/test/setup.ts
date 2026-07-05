@@ -48,25 +48,29 @@ const defaultBoundingRect = () =>
     toJSON: () => {},
   }) as DOMRect
 
-Object.defineProperty(HTMLElement.prototype, 'getClientRects', {
-  configurable: true,
-  value: emptyClientRects,
-})
+if (typeof HTMLElement !== 'undefined') {
+  Object.defineProperty(HTMLElement.prototype, 'getClientRects', {
+    configurable: true,
+    value: emptyClientRects,
+  })
 
-Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
-  configurable: true,
-  value: defaultBoundingRect,
-})
+  Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: defaultBoundingRect,
+  })
+}
 
-Object.defineProperty(Range.prototype, 'getClientRects', {
-  configurable: true,
-  value: emptyClientRects,
-})
+if (typeof Range !== 'undefined') {
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: emptyClientRects,
+  })
 
-Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
-  configurable: true,
-  value: defaultBoundingRect,
-})
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: defaultBoundingRect,
+  })
+}
 
 afterEach(() => {
   cleanup()

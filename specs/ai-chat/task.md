@@ -7,7 +7,7 @@
 
 ## Phase 1: 共有型・サーバー純粋ロジック
 
-- [ ] **A1-1: AIチャット共有型と API 契約**（plan §2.2, §3, §15.1, §16 Phase 1 / spec §9, §15, §16）
+- [x] **A1-1: AIチャット共有型と API 契約**（plan §2.2, §3, §15.1, §16 Phase 1 / spec §9, §15, §16）
   - 対象ファイル:
     - 実装: `src/aiChat/types.ts`
     - テスト: `src/aiChat/state.test.ts`
@@ -24,7 +24,7 @@
     - フロントエンドと `server/aiChat/*` が同じ JSON 契約を import できる
     - 共有型 `src/aiChat/types.ts` に DOM / React / Node 固有 API を置かず、型、文字列 union、制約値、純粋な type guard だけを置く
 
-- [ ] **A1-2: Codex promptBuilder**（plan §8, §15.5, §16 Phase 1 / spec §10.2, §15, §16）
+- [x] **A1-2: Codex promptBuilder**（plan §8, §15.5, §16 Phase 1 / spec §10.2, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/promptBuilder.ts`
     - テスト: `server/aiChat/promptBuilder.test.ts`
@@ -44,7 +44,7 @@
     - 履歴の丸めはサーバー側でも行い、フロントエンドの丸めだけに依存しない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **A1-3: Codex 出力 parse**（plan §9, §15.5, §16 Phase 1 / spec §10.3, §15, §16）
+- [x] **A1-3: Codex 出力 parse**（plan §9, §15.5, §16 Phase 1 / spec §10.3, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/parseCodexOutput.ts`
     - テスト: `server/aiChat/parseCodexOutput.test.ts`
@@ -67,7 +67,7 @@
     - AI が `proposedCode` に空文字を返した場合は不正な Codex 応答として扱える
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **A1-4: requestRegistry と server error helper**（plan §5, §7, §15.5, §16 Phase 1 / spec §9.3, §15, §16）
+- [x] **A1-4: requestRegistry と server error helper**（plan §5, §7, §15.5, §16 Phase 1 / spec §9.3, §15, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/requestRegistry.ts`, `server/aiChat/errors.ts`
     - テスト: `server/aiChat/requestRegistry.test.ts`
@@ -386,7 +386,7 @@
     - `npm run lint` が成功する
     - server 側 test file 先頭の `// @vitest-environment node` が全 server test に入っている
     - Node 側相対 import の `.ts` 拡張子が維持されている
-    - `package.json` と `src/test/setup.ts` は計画通り変更されていない
+    - `package.json` は変更されていない。`src/test/setup.ts` の変更は環境ガードの追加のみである
 
 - [ ] **A7-2: MVP 手動確認**（plan §15.7, §16 Phase 7 / spec §16, §17 手動確認）
   - 対象ファイル:

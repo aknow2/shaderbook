@@ -43,7 +43,7 @@ Vite preview / production build では AIチャット API を提供しない。`
 | `src/App.css` | `chat-panel`、メッセージ一覧、入力欄、送信/キャンセル、提案コード、Applied 表示のスタイル追加 |
 | `src/App.test.tsx` | `ChatPanel` の配置、`setCode` 連携、チャット入力欄フォーカス中の `Ctrl+Enter` 競合回避を検証 |
 
-`package.json` と `src/test/setup.ts` は変更しない。`package.json` の scripts は既存の `dev` / `build` / `lint` / `test` / `typecheck` をそのまま使う。fetch mock と timer reset は各 test file 内で完結させ、共通 setup には追加しない。
+`package.json` は変更しない。`src/test/setup.ts` は DOM prototype モックに環境ガードを追加し、Node 環境の server テストでも setupFiles が失敗しないようにする。`package.json` の scripts は既存の `dev` / `build` / `lint` / `test` / `typecheck` をそのまま使う。fetch mock や timer reset は引き続き各 test file 内で完結させ、共通 setup には追加しない。
 
 ### 2.2 新規ファイル
 
