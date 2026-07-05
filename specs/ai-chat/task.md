@@ -194,7 +194,7 @@
 
 ## Phase 4: フロントエンド client と state helper
 
-- [ ] **A4-1: ChatPanel state helper**（plan §3, §10, §15.1, §16 Phase 4 / spec §9, §12, §15, §16）
+- [x] **A4-1: ChatPanel state helper**（plan §3, §10, §15.1, §16 Phase 4 / spec §9, §12, §15, §16）
   - 対象ファイル:
     - 実装: `src/aiChat/state.ts`
     - テスト: `src/aiChat/state.test.ts`
@@ -220,7 +220,7 @@
     - 送信 payload 用 history は user message 追加前の messages から直近 20 件を作れる
     - 入力欄上限超過、WGSL 空、WGSL 大きすぎの表示文言を ChatPanel が再利用できる
 
-- [ ] **A4-2: AIチャット fetch client**（plan §13, §15.2, §16 Phase 4 / spec §8.7, §9, §15, §16）
+- [x] **A4-2: AIチャット fetch client**（plan §13, §15.2, §16 Phase 4 / spec §8.7, §9, §15, §16）
   - 対象ファイル:
     - 実装: `src/aiChat/client.ts`
     - テスト: `src/aiChat/client.test.ts`
