@@ -59,7 +59,7 @@
 
 ## Phase 2: parser / prompt の agent 非依存化
 
-- [ ] **C2-1: promptBuilder の agent 非依存 API 化**（plan §9.1, §12, §14 Phase 2 / spec §10.2, §11.2）
+- [x] **C2-1: promptBuilder の agent 非依存 API 化**（plan §9.1, §12, §14 Phase 2 / spec §10.2, §11.2）
   - 対象ファイル:
     - 実装: `server/aiChat/promptBuilder.ts`
     - テスト: `server/aiChat/promptBuilder.test.ts`
@@ -79,7 +79,7 @@
     - prompt は安全制約を含むが、runner の CLI 安全制約の代替として扱わない
     - サーバー側 test file 先頭に `// @vitest-environment node` がある
 
-- [ ] **C2-2: parseAiOutput 新設と parseCodexOutput 互換 wrapper**（plan §9.2, §14 Phase 2 / spec §10.3, §11.3）
+- [x] **C2-2: parseAiOutput 新設と parseCodexOutput 互換 wrapper**（plan §9.2, §14 Phase 2 / spec §10.3, §11.3）
   - 対象ファイル:
     - 実装: `server/aiChat/parseAiOutput.ts`, `server/aiChat/parseCodexOutput.ts`, `server/aiChat/errors.ts`
     - テスト: `server/aiChat/parseAiOutput.test.ts`, `server/aiChat/parseCodexOutput.test.ts`

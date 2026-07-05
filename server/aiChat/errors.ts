@@ -11,12 +11,15 @@ export class AiChatServerError extends Error {
   }
 }
 
-export class InvalidCodexResponseError extends AiChatServerError {
-  constructor(message = getDefaultErrorMessage('INVALID_CODEX_RESPONSE')) {
-    super('INVALID_CODEX_RESPONSE', message)
-    this.name = 'InvalidCodexResponseError'
+export class InvalidAiResponseError extends AiChatServerError {
+  constructor(message = getDefaultErrorMessage('INVALID_AI_RESPONSE')) {
+    super('INVALID_AI_RESPONSE', message)
+    this.name = 'InvalidAiResponseError'
   }
 }
+
+export const InvalidCodexResponseError = InvalidAiResponseError
+export type InvalidCodexResponseError = InvalidAiResponseError
 
 export const AI_CHAT_ERROR_STATUS: Record<AiChatErrorCode, number> = {
   INVALID_REQUEST: 400,

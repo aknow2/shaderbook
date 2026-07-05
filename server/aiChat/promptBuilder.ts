@@ -1,7 +1,7 @@
 import { AI_CHAT_HISTORY_MAX_ITEMS } from '../../src/aiChat/types.ts'
 import type { ChatHistoryItem } from '../../src/aiChat/types.ts'
 
-export function buildCodexPrompt(input: {
+export function buildAiChatPrompt(input: {
   message: string
   code: string
   history: ChatHistoryItem[]
@@ -48,3 +48,5 @@ ${input.code}
 ${input.message}
 `
 }
+
+export const buildCodexPrompt = buildAiChatPrompt
