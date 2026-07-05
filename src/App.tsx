@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import './App.css'
+import { ChatPanel } from './components/ChatPanel'
 import { EditorPane } from './components/EditorPane'
 import { ErrorPanel } from './components/ErrorPanel'
 import { Header } from './components/Header'
@@ -16,6 +17,10 @@ import {
 type Resolution = {
   width: number
   height: number
+}
+
+function isFromAiChatInput(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && target.closest('[data-ai-chat-input="true"]') !== null
 }
 
 function App() {
@@ -52,6 +57,10 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isFromAiChatInput(event.target)) {
+        return
+      }
+
       if (!event.ctrlKey && !event.metaKey) {
         return
       }
@@ -82,6 +91,7 @@ function App() {
         <div className="editor-column">
           <EditorPane code={code} onChange={setCode} />
           <ErrorPanel message={errorMessage} />
+          <ChatPanel code={code} onApplyCode={setCode} />
         </div>
         <PreviewPane
           code={code}

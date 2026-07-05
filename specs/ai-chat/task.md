@@ -326,7 +326,7 @@
 
 ## Phase 6: App 統合とショートカット調整
 
-- [ ] **A6-1: App への ChatPanel 配置と Apply 連携**（plan §10, §12, §14, §15.4, §16 Phase 6 / spec §7.1, §12, §15, §16）
+- [x] **A6-1: App への ChatPanel 配置と Apply 連携**（plan §10, §12, §14, §15.4, §16 Phase 6 / spec §7.1, §12, §15, §16）
   - 対象ファイル:
     - 実装: `src/App.tsx`
     - テスト: `src/App.test.tsx`
@@ -346,7 +346,7 @@
     - Apply だけでは Run / Preview / ErrorPanel が変化しない
     - 既存の Run / Reset / Save / Preview / ErrorPanel / Flipbook の state を AIチャット都合で変更しない
 
-- [ ] **A6-2: App document shortcut の二重防御**（plan §11, §14, §15.4, §16 Phase 6 / spec §7.4, §15, §16）
+- [x] **A6-2: App document shortcut の二重防御**（plan §11, §14, §15.4, §16 Phase 6 / spec §7.4, §15, §16）
   - 対象ファイル:
     - 実装: `src/App.tsx`, `src/components/ChatPanel.tsx`
     - テスト: `src/App.test.tsx`, `src/components/ChatPanel.test.tsx`

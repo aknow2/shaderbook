@@ -2,16 +2,32 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import type { AiChatMessageRequest, AiChatMessageResponse } from './aiChat/types'
 import type { PreviewPaneProps } from './components/PreviewPane'
 import { defaultShader } from './constants/defaultShader'
 import { initialFlipbookSettings } from './types/preview'
 
 const mocks = vi.hoisted(() => ({
   PreviewPane: vi.fn(() => null),
+  sendAiChatMessage: vi.fn(),
+  cancelAiChatRequest: vi.fn(),
 }))
 
 vi.mock('./components/PreviewPane', () => ({
   PreviewPane: mocks.PreviewPane,
+}))
+
+vi.mock('./aiChat/client', () => ({
+  AiChatClientError: class AiChatClientError extends Error {
+    readonly displayMessage: string
+
+    constructor(displayMessage: string) {
+      super(displayMessage)
+      this.displayMessage = displayMessage
+    }
+  },
+  sendAiChatMessage: mocks.sendAiChatMessage,
+  cancelAiChatRequest: mocks.cancelAiChatRequest,
 }))
 
 function getEditorView() {
@@ -59,6 +75,29 @@ function getLastPreviewPaneProps(): PreviewPaneProps {
   return lastCall[0]
 }
 
+function getAiChatInput() {
+  return screen.getByLabelText('AI chat message') as HTMLTextAreaElement
+}
+
+function submitAiChatMessage(message: string) {
+  fireEvent.change(getAiChatInput(), { target: { value: message } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send AI chat message' }))
+}
+
+function mockAiChatSuccess(content = 'Assistant response', proposedCode: string | null = null) {
+  mocks.sendAiChatMessage.mockImplementation(
+    async (request: AiChatMessageRequest): Promise<AiChatMessageResponse> => ({
+      requestId: request.requestId,
+      message: {
+        role: 'assistant',
+        content,
+        proposedCode,
+        notes: [],
+      },
+    }),
+  )
+}
+
 describe('App Run, Save, and keyboard shortcuts', () => {
   const createObjectURL = vi.fn(() => 'blob:shader')
   const revokeObjectURL = vi.fn()
@@ -67,6 +106,9 @@ describe('App Run, Save, and keyboard shortcuts', () => {
 
   beforeEach(() => {
     mocks.PreviewPane.mockClear()
+    mocks.sendAiChatMessage.mockReset()
+    mocks.cancelAiChatRequest.mockReset()
+    mocks.cancelAiChatRequest.mockResolvedValue({ requestId: 'request-id', canceled: true })
     createObjectURL.mockClear()
     revokeObjectURL.mockClear()
     anchorClick.mockClear()
@@ -208,6 +250,206 @@ describe('App Run, Save, and keyboard shortcuts', () => {
         undefined,
       )
     })
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+  })
+
+  it('A6-1: `EditorPane` / `ErrorPanel` / `ChatPanel` が `editor-column` 内に縦に並ぶ', () => {
+    render(<App />)
+
+    act(() => {
+      getLastPreviewPaneProps().onCompileError('compile failed')
+    })
+
+    const editorColumn = screen.getByLabelText('Shader workspace').querySelector('.editor-column')
+    const childClassNames = Array.from(editorColumn?.children ?? []).map((child) => child.className)
+
+    expect(childClassNames[0]).toContain('editor-pane')
+    expect(childClassNames[1]).toContain('error-panel')
+    expect(childClassNames[2]).toContain('chat-panel')
+  })
+
+  it('A6-1: ChatPanel に現在の `code` が渡る', async () => {
+    mockAiChatSuccess()
+    render(<App />)
+    await replaceEditorCode('fn mainImage() -> vec4f { return vec4f(0.25); }')
+
+    submitAiChatMessage('use current code')
+
+    await waitFor(() => expect(mocks.sendAiChatMessage).toHaveBeenCalledTimes(1))
+    const payload = mocks.sendAiChatMessage.mock.calls[0][0] as AiChatMessageRequest
+    expect(payload.code).toBe('fn mainImage() -> vec4f { return vec4f(0.25); }')
+  })
+
+  it('A6-1: ChatPanel の Apply callback で `EditorPane` の code が置き換わる', async () => {
+    mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
+    render(<App />)
+
+    submitAiChatMessage('replace code')
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' }))
+
+    await waitFor(() => {
+      expect(getEditorView().state.doc.toString()).toBe(
+        'fn mainImage() -> vec4f { return vec4f(0.75); }',
+      )
+    })
+  })
+
+  it('A6-1: Apply だけでは `shouldCompile` が反転しない', async () => {
+    mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
+    render(<App />)
+
+    submitAiChatMessage('replace code')
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' }))
+
+    await waitFor(() => {
+      expect(getLastPreviewPaneProps().code).toBe('fn mainImage() -> vec4f { return vec4f(0.75); }')
+    })
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+  })
+
+  it('A6-1: Apply だけでは Preview が更新されない', async () => {
+    mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
+    render(<App />)
+
+    submitAiChatMessage('replace code')
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Compile: Idle')).toBeInTheDocument()
+    })
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+  })
+
+  it('A6-1: Apply だけでは ErrorPanel が変更されない', async () => {
+    mockAiChatSuccess('Patch ready', 'fn mainImage() -> vec4f { return vec4f(0.75); }')
+    render(<App />)
+    act(() => {
+      getLastPreviewPaneProps().onCompileError('compile failed before apply')
+    })
+
+    submitAiChatMessage('replace code')
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply proposed code from assistant message 2' }))
+
+    expect(await screen.findByText('compile failed before apply')).toBeInTheDocument()
+    expect(screen.getByText('Compile: Error')).toBeInTheDocument()
+  })
+
+  it('A6-1: Reset は code を戻すがチャット履歴は ChatPanel state として維持される', async () => {
+    mockAiChatSuccess('History stays')
+    render(<App />)
+    await replaceEditorCode('fn mainImage() -> vec4f { return vec4f(0.25); }')
+
+    submitAiChatMessage('keep history')
+    expect(await screen.findByText('History stays')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^reset$/i }))
+
+    await waitFor(() => {
+      expect(getEditorView().state.doc.toString()).toBe(defaultShader)
+    })
+    expect(screen.getByText('keep history')).toBeInTheDocument()
+    expect(screen.getByText('History stays')).toBeInTheDocument()
+  })
+
+  it('A6-1: Save は code だけを保存し、チャット履歴を保存しない', async () => {
+    mockAiChatSuccess('Assistant text that must not be saved')
+    render(<App />)
+    await replaceEditorCode('fn mainImage() -> vec4f { return vec4f(0.25); }')
+
+    submitAiChatMessage('User text that must not be saved')
+    expect(await screen.findByText('Assistant text that must not be saved')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+
+    const [blob] = createObjectURL.mock.calls[0] as unknown as [Blob]
+    await expect(blob.text()).resolves.toBe('fn mainImage() -> vec4f { return vec4f(0.25); }')
+    await expect(blob.text()).resolves.not.toContain('User text that must not be saved')
+    await expect(blob.text()).resolves.not.toContain('Assistant text that must not be saved')
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがない時の `Ctrl+Enter` は既存通り Run', async () => {
+    render(<App />)
+    const editor = screen.getByLabelText('WGSL shader code')
+
+    const event = dispatchShortcut(editor, { key: 'Enter', ctrlKey: true })
+
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() => {
+      expect(getLastPreviewPaneProps().shouldCompile).toBe(true)
+    })
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがない時の `Meta+Enter` は既存通り Run', async () => {
+    render(<App />)
+    const editor = screen.getByLabelText('WGSL shader code')
+
+    const event = dispatchShortcut(editor, { key: 'Enter', metaKey: true })
+
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() => {
+      expect(getLastPreviewPaneProps().shouldCompile).toBe(true)
+    })
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがある時の `Ctrl+Enter` は Run しない', async () => {
+    mockAiChatSuccess()
+    render(<App />)
+
+    fireEvent.change(getAiChatInput(), { target: { value: 'send without run' } })
+    fireEvent.keyDown(getAiChatInput(), { key: 'Enter', ctrlKey: true })
+
+    await waitFor(() => expect(mocks.sendAiChatMessage).toHaveBeenCalledTimes(1))
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがある時の `Meta+Enter` は Run しない', async () => {
+    mockAiChatSuccess()
+    render(<App />)
+
+    fireEvent.change(getAiChatInput(), { target: { value: 'send without run' } })
+    fireEvent.keyDown(getAiChatInput(), { key: 'Enter', metaKey: true })
+
+    await waitFor(() => expect(mocks.sendAiChatMessage).toHaveBeenCalledTimes(1))
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがある時の `Ctrl+Enter` はチャット送信する', async () => {
+    mockAiChatSuccess('Sent by Ctrl')
+    render(<App />)
+
+    fireEvent.change(getAiChatInput(), { target: { value: 'send with ctrl' } })
+    fireEvent.keyDown(getAiChatInput(), { key: 'Enter', ctrlKey: true })
+
+    await waitFor(() => expect(mocks.sendAiChatMessage).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Sent by Ctrl')).toBeInTheDocument()
+  })
+
+  it('A6-2: チャット入力欄にフォーカスがある時の `Meta+Enter` はチャット送信する', async () => {
+    mockAiChatSuccess('Sent by Meta')
+    render(<App />)
+
+    fireEvent.change(getAiChatInput(), { target: { value: 'send with meta' } })
+    fireEvent.keyDown(getAiChatInput(), { key: 'Enter', metaKey: true })
+
+    await waitFor(() => expect(mocks.sendAiChatMessage).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Sent by Meta')).toBeInTheDocument()
+  })
+
+  it('A6-2: `Ctrl+S` はチャット入力欄にフォーカスがない時だけ既存通り Save', () => {
+    render(<App />)
+
+    dispatchShortcut(getAiChatInput(), { key: 's', ctrlKey: true })
+    expect(createObjectURL).not.toHaveBeenCalled()
+
+    dispatchShortcut(screen.getByLabelText('WGSL shader code'), { key: 's', ctrlKey: true })
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+  })
+
+  it('A6-2: `Meta+S` はチャット入力欄にフォーカスがない時だけ既存通り Save', () => {
+    render(<App />)
+
+    dispatchShortcut(getAiChatInput(), { key: 's', metaKey: true })
+    expect(createObjectURL).not.toHaveBeenCalled()
+
+    dispatchShortcut(screen.getByLabelText('WGSL shader code'), { key: 's', metaKey: true })
     expect(createObjectURL).toHaveBeenCalledTimes(1)
   })
 })
