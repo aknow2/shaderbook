@@ -15,16 +15,18 @@ type TestResponse = ServerResponse & {
   headers: Record<string, string | number | readonly string[]>
 }
 
+type TestRequest = PassThrough & Pick<IncomingMessage, 'method' | 'url'>
+
 type RunCodexContext = {
   registry: RequestRegistry
 }
 
-function createJsonRequest(url: string, body: unknown, method = 'POST'): IncomingMessage {
+function createJsonRequest(url: string, body: unknown, method = 'POST'): TestRequest {
   return createRequest(url, JSON.stringify(body), method)
 }
 
-function createRequest(url: string, body: string, method = 'POST'): IncomingMessage {
-  const request = new PassThrough() as IncomingMessage
+function createRequest(url: string, body: string, method = 'POST'): TestRequest {
+  const request = new PassThrough() as TestRequest
   request.method = method
   request.url = url
   queueMicrotask(() => {
@@ -84,7 +86,7 @@ async function send(
       : createRequest(options.url, options.rawBody, options.method)
   const response = createResponse()
 
-  await handler(request, response, vi.fn())
+  await handler(request as unknown as IncomingMessage, response, vi.fn())
 
   return {
     registry,

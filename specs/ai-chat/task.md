@@ -171,7 +171,7 @@
 
 ## Phase 3: Vite plugin 統合
 
-- [ ] **A3-1: Vite middleware と tsconfig 分離**（plan §2.1, §4, §16 Phase 3 / spec §6, §11.1, §16）
+- [x] **A3-1: Vite middleware と tsconfig 分離**（plan §2.1, §4, §16 Phase 3 / spec §6, §11.1, §16）
   - 対象ファイル:
     - 実装: `server/aiChat/vitePlugin.ts`, `vite.config.ts`, `tsconfig.app.json`, `tsconfig.node.json`
     - テスト: `server/aiChat/vitePlugin.test.ts`
