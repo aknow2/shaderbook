@@ -38,31 +38,41 @@ export async function downloadFlipbookFramesAsPngs({
 }: DownloadFlipbookFramesInput): Promise<number> {
   const frameNumberWidth = Math.max(3, String(grid.cells.length - 1).length)
 
-  for (const cell of grid.cells) {
-    const frameCanvas = document.createElement('canvas')
-    frameCanvas.width = cell.width
-    frameCanvas.height = cell.height
+  // drawImage/createImageBitmap read stale (blank) pixels from a canvas backed
+  // by a GPUCanvasContext, so the full frame is snapshotted via toBlob first
+  // and cells are cropped from that decoded bitmap instead of the live canvas.
+  const sourceBlob = await canvasToPngBlob(sourceCanvas)
+  const sourceBitmap = await createImageBitmap(sourceBlob)
 
-    const context = frameCanvas.getContext('2d')
-    if (!context) {
-      throw new Error('Unable to create PNG export canvas context')
+  try {
+    for (const cell of grid.cells) {
+      const frameCanvas = document.createElement('canvas')
+      frameCanvas.width = cell.width
+      frameCanvas.height = cell.height
+
+      const context = frameCanvas.getContext('2d')
+      if (!context) {
+        throw new Error('Unable to create PNG export canvas context')
+      }
+
+      context.drawImage(
+        sourceBitmap,
+        cell.x,
+        cell.y,
+        cell.width,
+        cell.height,
+        0,
+        0,
+        cell.width,
+        cell.height,
+      )
+
+      const blob = await canvasToPngBlob(frameCanvas)
+      const frameNumber = String(cell.index).padStart(frameNumberWidth, '0')
+      downloadBlob(blob, `${filenamePrefix}-${frameNumber}.png`)
     }
-
-    context.drawImage(
-      sourceCanvas,
-      cell.x,
-      cell.y,
-      cell.width,
-      cell.height,
-      0,
-      0,
-      cell.width,
-      cell.height,
-    )
-
-    const blob = await canvasToPngBlob(frameCanvas)
-    const frameNumber = String(cell.index).padStart(frameNumberWidth, '0')
-    downloadBlob(blob, `${filenamePrefix}-${frameNumber}.png`)
+  } finally {
+    sourceBitmap.close()
   }
 
   return grid.cells.length

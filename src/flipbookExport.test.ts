@@ -43,12 +43,17 @@ describe('downloadFlipbookFramesAsPngs', () => {
   const revokeObjectURL = vi.fn()
   const clickedAnchors: Array<{ href: string; download: string }> = []
   const drawImage = vi.fn()
+  const closeBitmap = vi.fn()
+  const sourceBitmap = { close: closeBitmap } as unknown as ImageBitmap
+  const createImageBitmap = vi.fn(() => Promise.resolve(sourceBitmap))
 
   beforeEach(() => {
     createObjectURL.mockClear()
     revokeObjectURL.mockClear()
     clickedAnchors.length = 0
     drawImage.mockClear()
+    closeBitmap.mockClear()
+    createImageBitmap.mockClear()
     nextObjectUrlId = 0
 
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
@@ -60,6 +65,7 @@ describe('downloadFlipbookFramesAsPngs', () => {
         callback(new Blob(['png'], { type }))
       }),
     })
+    vi.stubGlobal('createImageBitmap', createImageBitmap)
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       value: createObjectURL,
@@ -75,6 +81,7 @@ describe('downloadFlipbookFramesAsPngs', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
       configurable: true,
       value: originalToBlob,
@@ -86,8 +93,10 @@ describe('downloadFlipbookFramesAsPngs', () => {
 
     await expect(downloadFlipbookFramesAsPngs({ sourceCanvas, grid })).resolves.toBe(2)
 
-    expect(drawImage).toHaveBeenNthCalledWith(1, sourceCanvas, 10, 20, 30, 40, 0, 0, 30, 40)
-    expect(drawImage).toHaveBeenNthCalledWith(2, sourceCanvas, 48, 20, 30, 40, 0, 0, 30, 40)
+    expect(createImageBitmap).toHaveBeenCalledTimes(1)
+    expect(drawImage).toHaveBeenNthCalledWith(1, sourceBitmap, 10, 20, 30, 40, 0, 0, 30, 40)
+    expect(drawImage).toHaveBeenNthCalledWith(2, sourceBitmap, 48, 20, 30, 40, 0, 0, 30, 40)
+    expect(closeBitmap).toHaveBeenCalledTimes(1)
     expect(createObjectURL).toHaveBeenCalledTimes(2)
     expect(clickedAnchors).toEqual([
       { href: 'blob:image/png:0', download: 'flipbook-frame-000.png' },
