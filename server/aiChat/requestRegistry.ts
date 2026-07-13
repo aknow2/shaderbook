@@ -16,6 +16,7 @@ export type RequestRegistry = {
   getState: (requestId: string, child: RequestChildProcess) => RegisteredRequestState | null
   markTimedOut: (requestId: string, child: RequestChildProcess) => void
   cancel: (requestId: string) => boolean
+  cancelAll: () => void
   unregister: (requestId: string, child: RequestChildProcess) => void
 }
 
@@ -86,6 +87,12 @@ export function createRequestRegistry(): RequestRegistry {
       beginForcedShutdown(entry, 'canceling')
 
       return true
+    },
+
+    cancelAll() {
+      for (const entry of requests.values()) {
+        beginForcedShutdown(entry, 'canceling')
+      }
     },
 
     unregister(requestId, child) {

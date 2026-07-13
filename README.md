@@ -42,27 +42,40 @@ npm install
 npm run dev
 ```
 
-After the Vite dev server starts, open the displayed localhost URL in a browser with WebGPU support.
+This starts the loopback Express API server and the Vite frontend together. Open the URL displayed by Vite in a browser with WebGPU support.
 
-The AI Chat API runs as Vite dev server middleware. AI Chat is not available when the app is served as static production files only.
+Vite proxies `/api/ai-chat/*` to Express during development. The API implementation itself does not run inside Vite.
+
+To run the built frontend and API from one local server:
+
+```sh
+npm run build
+npm start
+```
+
+The server binds to `127.0.0.1` and is not intended for external deployment.
 
 ## Commands
 
 ```sh
 npm run dev
 npm run build
+npm run start
 npm run preview
 npm run test
+npm run test:e2e
 npm run typecheck
 npm run lint
 ```
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Run TypeScript and Vite production builds |
-| `npm run preview` | Preview the production build |
+| `npm run dev` | Start the Express API and Vite frontend in watch mode |
+| `npm run build` | Typecheck and build the frontend and Node server |
+| `npm run start` | Serve the built frontend and API on loopback |
+| `npm run preview` | Start the built local server |
 | `npm run test` | Run Vitest |
+| `npm run test:e2e` | Build and test the real server and development proxy processes |
 | `npm run typecheck` | Run TypeScript type checking |
 | `npm run lint` | Run oxlint |
 
@@ -142,7 +155,9 @@ src/
   editor/       WGSL editor language support
   gpu/          WebGPU context, pipeline, render loop, flipbook rendering
 server/
-  aiChat/       Vite dev server middleware and CLI runners
+  app.ts        Express app and static frontend serving
+  index.ts      Loopback listener and graceful shutdown
+  aiChat/       API routing, validation, and CLI runners
 specs/          Product specs, plans, and task notes
 public/         favicon and shared SVG icons
 ```

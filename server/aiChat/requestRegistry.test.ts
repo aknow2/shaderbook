@@ -96,6 +96,35 @@ describe('createRequestRegistry', () => {
     expect(child.kill).not.toHaveBeenCalled()
   })
 
+  it('cancels every running child during server shutdown', () => {
+    const registry = createRequestRegistry()
+    const firstChild = createFakeChild()
+    const secondChild = createFakeChild()
+
+    registry.register('request-1', firstChild)
+    registry.register('request-2', secondChild)
+    registry.cancelAll()
+
+    expect(firstChild.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(secondChild.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(registry.getState('request-1', firstChild)).toBe('canceling')
+    expect(registry.getState('request-2', secondChild)).toBe('canceling')
+  })
+
+  it('does not schedule duplicate forced kills when cancelAll follows cancel', () => {
+    const registry = createRequestRegistry()
+    const child = createFakeChild()
+
+    registry.register('request-1', child)
+    registry.cancel('request-1')
+    registry.cancelAll()
+    vi.advanceTimersByTime(2000)
+
+    expect(child.kill).toHaveBeenCalledTimes(2)
+    expect(child.kill).toHaveBeenNthCalledWith(1, 'SIGTERM')
+    expect(child.kill).toHaveBeenNthCalledWith(2, 'SIGKILL')
+  })
+
   it('sends SIGTERM to the target child on markTimedOut', () => {
     const registry = createRequestRegistry()
     const child = createFakeChild()
