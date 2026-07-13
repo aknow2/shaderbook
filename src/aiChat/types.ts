@@ -2,8 +2,9 @@ export const AI_CHAT_MESSAGE_MAX_LENGTH = 4000
 export const AI_CHAT_CODE_MAX_LENGTH = 200000
 export const AI_CHAT_HISTORY_MAX_ITEMS = 20
 export const AI_CHAT_REQUEST_ID_MAX_LENGTH = 128
-export const AI_CHAT_SERVER_TIMEOUT_MS = 120000
-export const AI_CHAT_CLIENT_TIMEOUT_MS = 130000
+export const AI_CHAT_SESSION_ID_MAX_LENGTH = 128
+export const AI_CHAT_SERVER_TIMEOUT_MS = 300000
+export const AI_CHAT_CLIENT_TIMEOUT_MS = 310000
 
 export type ChatHistoryItem = {
   role: 'user' | 'assistant'
@@ -14,6 +15,9 @@ export type ChatHistoryItem = {
 export type AiChatAgent = 'codex' | 'claude'
 
 export type AiChatCodexModel =
+  | 'gpt-5.6-sol'
+  | 'gpt-5.6-terra'
+  | 'gpt-5.6-luna'
   | 'gpt-5.5'
   | 'gpt-5.4'
   | 'gpt-5.4-mini'
@@ -28,7 +32,13 @@ export type AiChatClaudeModel =
 
 export type AiChatModel = AiChatCodexModel | AiChatClaudeModel
 
-export type AiChatCodexPerformance = 'low' | 'medium' | 'high' | 'xhigh'
+export type AiChatCodexPerformance =
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max'
+  | 'ultra'
 
 export type AiChatClaudePerformance =
   | 'default'
@@ -51,6 +61,7 @@ export type AiChatMessageRequest = {
   message: string
   code: string
   history: ChatHistoryItem[]
+  sessionId?: string
   agent?: AiChatAgent
   model?: AiChatModel
   performance?: AiChatPerformance
@@ -68,6 +79,7 @@ export type AiChatAssistantMessage = {
 
 export type AiChatMessageResponse = {
   requestId: string
+  sessionId?: string
   message: AiChatAssistantMessage
 }
 
@@ -121,6 +133,9 @@ export const AI_CHAT_AGENT_OPTIONS = [
 
 export const AI_CHAT_MODEL_OPTIONS_BY_AGENT = {
   codex: [
+    { id: 'gpt-5.6-sol', label: 'GPT-5.6-Sol' },
+    { id: 'gpt-5.6-terra', label: 'GPT-5.6-Terra' },
+    { id: 'gpt-5.6-luna', label: 'GPT-5.6-Luna' },
     { id: 'gpt-5.5', label: 'GPT-5.5' },
     { id: 'gpt-5.4', label: 'GPT-5.4' },
     { id: 'gpt-5.4-mini', label: 'GPT-5.4-Mini' },
@@ -144,6 +159,8 @@ export const AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT = {
     { id: 'medium', label: 'Medium' },
     { id: 'high', label: 'High' },
     { id: 'xhigh', label: 'XHigh' },
+    { id: 'max', label: 'Max' },
+    { id: 'ultra', label: 'Ultra' },
   ],
   claude: [
     { id: 'default', label: 'Default' },
@@ -161,7 +178,7 @@ export const AI_CHAT_PERFORMANCE_OPTIONS_BY_AGENT = {
 export const AI_CHAT_DEFAULT_AGENT = 'codex' satisfies AiChatAgent
 
 export const AI_CHAT_DEFAULT_MODEL_BY_AGENT = {
-  codex: 'gpt-5.5',
+  codex: 'gpt-5.6-sol',
   claude: 'claude-default',
 } as const satisfies {
   readonly codex: AiChatCodexModel
@@ -226,6 +243,10 @@ export function normalizeAiChatMessageRequest(
 
   if (!isAiChatAgent(agent)) {
     throw new Error('Unsupported AI chat agent.')
+  }
+
+  if (request.sessionId && agent !== 'codex') {
+    throw new Error('AI chat sessions are only available for Codex.')
   }
 
   const model = request.model ?? AI_CHAT_DEFAULT_MODEL_BY_AGENT[agent]

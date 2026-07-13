@@ -16,7 +16,7 @@ import type { ParsedAiOutput } from './parseAiOutput.ts'
 import { buildAiChatPrompt } from './promptBuilder.ts'
 import type { RequestChildProcess, RequestRegistry } from './requestRegistry.ts'
 
-export type CodexRunnerResult = ParsedAiOutput
+export type CodexRunnerResult = ParsedAiOutput & { sessionId?: string }
 
 type CodexChildProcess = RequestChildProcess & {
   stdin: {
@@ -64,6 +64,7 @@ export async function runCodex(
   const outputFilePath = join(tempDirectory, OUTPUT_FILE_NAME)
   let child: CodexChildProcess | null = null
   let timeout: ReturnType<typeof setTimeout> | null = null
+  const sessionIdCollector = createCodexSessionIdCollector()
 
   try {
     const args = buildCodexArgs(input, outputFilePath)
@@ -82,7 +83,7 @@ export async function runCodex(
 
     const closeResultPromise = waitForClose(child)
 
-    child.stdout.on('data', () => {})
+    child.stdout.on('data', (chunk) => sessionIdCollector.push(chunk))
     child.stderr.on('data', () => {})
     child.stdin.write(prompt)
     child.stdin.end()
@@ -130,7 +131,13 @@ export async function runCodex(
       throw new AiChatServerError('INVALID_AI_RESPONSE')
     }
 
-    return parseAiOutput(rawOutput)
+    const parsedOutput = parseAiOutput(rawOutput)
+    const sessionId = input.sessionId ?? sessionIdCollector.getSessionId()
+
+    return {
+      ...parsedOutput,
+      ...(sessionId ? { sessionId } : {}),
+    }
   } finally {
     if (timeout) {
       clearTimeout(timeout)
@@ -148,6 +155,21 @@ function buildCodexArgs(
   input: NormalizedAiChatMessageRequest,
   outputFilePath: string,
 ): string[] {
+  if (input.sessionId) {
+    return [
+      'exec',
+      'resume',
+      '--skip-git-repo-check',
+      '--json',
+      '--output-last-message',
+      outputFilePath,
+      ...getAiChatModelArgs('codex', input.model),
+      ...getAiChatPerformanceArgs('codex', input.performance),
+      input.sessionId,
+      '-',
+    ]
+  }
+
   return [
     ...getAiChatAgentBaseArgs('codex'),
     outputFilePath,
@@ -155,6 +177,50 @@ function buildCodexArgs(
     ...getAiChatPerformanceArgs('codex', input.performance),
     '-',
   ]
+}
+
+function createCodexSessionIdCollector(): {
+  push: (chunk: Buffer | string) => void
+  getSessionId: () => string | null
+} {
+  let pending = ''
+  let sessionId: string | null = null
+
+  const parseLine = (line: string) => {
+    if (sessionId || line.trim().length === 0) {
+      return
+    }
+
+    try {
+      const event: unknown = JSON.parse(line)
+
+      if (
+        typeof event === 'object' &&
+        event !== null &&
+        'type' in event &&
+        event.type === 'thread.started' &&
+        'thread_id' in event &&
+        typeof event.thread_id === 'string'
+      ) {
+        sessionId = event.thread_id
+      }
+    } catch {
+      // Ignore non-JSON diagnostic output and continue collecting JSONL events.
+    }
+  }
+
+  return {
+    push(chunk) {
+      pending += chunk.toString()
+      const lines = pending.split(/\r?\n/)
+      pending = lines.pop() ?? ''
+      lines.forEach(parseLine)
+    },
+    getSessionId() {
+      parseLine(pending)
+      return sessionId
+    },
+  }
 }
 
 function waitForClose(child: CodexChildProcess): Promise<{

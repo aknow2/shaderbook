@@ -16,6 +16,8 @@ import { runCodex } from './codexRunner.ts'
 
 type FakeSignal = 'SIGTERM' | 'SIGKILL'
 
+const CODEX_SESSION_ID = '123e4567-e89b-42d3-a456-426614174000'
+
 type SpawnCall = {
   command: string
   args: string[]
@@ -146,10 +148,49 @@ describe('runCodex spawn / stdin / cleanup', () => {
         '--sandbox',
         'read-only',
         '--skip-git-repo-check',
+        '--json',
         '--output-last-message',
         outputFilePath,
       ]),
     )
+  })
+
+  it('returns the Codex session id from a thread.started JSONL event', async () => {
+    const { fake, promise } = await runWithFakeSpawn()
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+    child.stdout.emit('data', '{"type":"thread.started","thread_')
+    child.stdout.emit('data', `id":"${CODEX_SESSION_ID}"}\n`)
+
+    child.close(0)
+
+    await expect(promise).resolves.toEqual({
+      message: '回答',
+      proposedCode: null,
+      notes: [],
+      sessionId: CODEX_SESSION_ID,
+    })
+  })
+
+  it('uses codex exec resume with the supplied session id', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ sessionId: CODEX_SESSION_ID })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args.slice(0, 2)).toEqual(['exec', 'resume'])
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining([
+        '--skip-git-repo-check',
+        '--json',
+        '--output-last-message',
+        CODEX_SESSION_ID,
+        '-',
+      ]),
+    )
+    expect(fake.calls[0].args).not.toContain('--sandbox')
   })
 
   it('adds the GPT-5.5 model mapping', async () => {
@@ -162,6 +203,19 @@ describe('runCodex spawn / stdin / cleanup', () => {
     await promise
     expect(fake.calls[0].args).toEqual(
       expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['gpt-5.5']]),
+    )
+  })
+
+  it('adds the GPT-5.6-Sol model mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ model: 'gpt-5.6-sol' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--model', CODEX_MODEL_CLI_VALUES['gpt-5.6-sol']]),
     )
   })
 
@@ -256,6 +310,19 @@ describe('runCodex spawn / stdin / cleanup', () => {
     await promise
     expect(fake.calls[0].args).toEqual(
       expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.xhigh]),
+    )
+  })
+
+  it('adds the codex ultra performance mapping', async () => {
+    const { fake, promise } = await runWithFakeSpawn({ performance: 'ultra' })
+    const child = fake.children[0]
+    await writeValidOutput(getOutputFilePath(fake.calls[0]))
+
+    child.close(0)
+
+    await promise
+    expect(fake.calls[0].args).toEqual(
+      expect.arrayContaining(['--config', CODEX_PERFORMANCE_CLI_VALUES.ultra]),
     )
   })
 
@@ -416,7 +483,7 @@ describe('runCodex timeout / cancel / error mapping', () => {
     const { registry, fake, promise } = await runWithFakeSpawn()
     const child = fake.children[0]
 
-    vi.advanceTimersByTime(120000)
+    vi.advanceTimersByTime(300000)
 
     expect(registry.getState('request-1', child)).toBe('timedOut')
     child.close(0)
@@ -428,7 +495,7 @@ describe('runCodex timeout / cancel / error mapping', () => {
     const child = fake.children[0]
 
     const elapsedSinceSpawn = Date.now() - fake.calls[0].startedAt
-    vi.advanceTimersByTime(120000 - elapsedSinceSpawn)
+    vi.advanceTimersByTime(300000 - elapsedSinceSpawn)
     expect(child.kill).toHaveBeenCalledWith('SIGTERM')
     expect(child.kill).not.toHaveBeenCalledWith('SIGKILL')
     child.kill.mockClear()
@@ -461,7 +528,7 @@ describe('runCodex timeout / cancel / error mapping', () => {
   it('maps close after timeout to a TIMEOUT error', async () => {
     const { fake, promise } = await runWithFakeSpawn()
 
-    vi.advanceTimersByTime(120000)
+    vi.advanceTimersByTime(300000)
     fake.children[0].close(0)
 
     await expect(promise).rejects.toMatchObject({ code: 'TIMEOUT' })
@@ -481,7 +548,7 @@ describe('runCodex timeout / cancel / error mapping', () => {
     const outputFilePath = getOutputFilePath(fake.calls[0])
     const tempDirectory = dirname(outputFilePath)
 
-    vi.advanceTimersByTime(120000)
+    vi.advanceTimersByTime(300000)
     fake.children[0].close(0)
 
     await expect(promise).rejects.toMatchObject({ code: 'TIMEOUT' })

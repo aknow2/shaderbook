@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eyes Rotator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111318;
+      color: #f5f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 42%, #2b303b 0, #171a21 44%, #0d0f13 100%);
+    }
+
+    .stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+    }
+
+    .rotor {
+      width: min(68vmin, 720px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      will-change: transform;
+      transform-origin: 50% 50%;
+    }
+
+    .rotor img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    .controls {
+      width: min(760px, calc(100% - 32px));
+      margin: 0 auto 24px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      border: 1px solid rgb(255 255 255 / 10%);
+      border-radius: 18px;
+      background: rgb(18 21 27 / 86%);
+      box-shadow: 0 18px 60px rgb(0 0 0 / 35%);
+      backdrop-filter: blur(16px);
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 10px 14px;
+      align-items: center;
+    }
+
+    .image-control {
+      grid-column: 1 / -1;
+      grid-template-columns: auto 1fr;
+    }
+
+    .image-control output {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: #c7ccd6;
+    }
+
+    output {
+      justify-self: end;
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: #8e97a8;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #82aaff;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgb(255 255 255 / 14%);
+      border-radius: 9px;
+      background: #0d0f14;
+      color: inherit;
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="file"] {
+      grid-column: 1 / -1;
+      width: 100%;
+      padding: 7px;
+      border: 1px solid rgb(255 255 255 / 14%);
+      border-radius: 9px;
+      background: #0d0f14;
+      color: #c7ccd6;
+      font: inherit;
+    }
+
+    input[type="file"]::file-selector-button {
+      margin-right: 12px;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 7px;
+      background: #82aaff;
+      color: #0d1830;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    input:focus-visible {
+      outline: 2px solid #82aaff;
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 620px) {
+      .stage {
+        padding: 20px;
+      }
+
+      .rotor {
+        width: min(78vmin, 540px);
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage" aria-label="回転プレビュー">
+    <div class="rotor" id="rotor">
+      <img id="rotatingImage" src="eyes.png" alt="回転する画像">
+    </div>
+  </main>
+
+  <section class="controls" aria-label="回転設定">
+    <div class="control image-control">
+      <label for="imagePicker">回転する画像</label>
+      <output id="imageName" for="imagePicker">eyes.png</output>
+      <input id="imagePicker" type="file" accept="image/*">
+    </div>
+
+    <div class="control">
+      <label for="rpm">回転速度</label>
+      <output id="rpmOutput" for="rpm rpmNumber">12 rpm</output>
+      <input id="rpm" type="range" min="-120" max="120" step="1" value="12">
+      <input id="rpmNumber" type="number" min="-999" max="999" step="1" value="12" aria-label="回転速度（rpm）">
+    </div>
+
+    <div class="control">
+      <label for="fps">Framerate</label>
+      <output id="fpsOutput" for="fps fpsNumber">60 fps</output>
+      <input id="fps" type="range" min="1" max="120" step="1" value="60">
+      <input id="fpsNumber" type="number" min="1" max="240" step="1" value="60" aria-label="フレームレート（fps）">
+    </div>
+  </section>
+
+  <script>
+    const rotor = document.querySelector('#rotor');
+    const rotatingImage = document.querySelector('#rotatingImage');
+    const imagePicker = document.querySelector('#imagePicker');
+    const imageName = document.querySelector('#imageName');
+    const rpmRange = document.querySelector('#rpm');
+    const rpmNumber = document.querySelector('#rpmNumber');
+    const rpmOutput = document.querySelector('#rpmOutput');
+    const fpsRange = document.querySelector('#fps');
+    const fpsNumber = document.querySelector('#fpsNumber');
+    const fpsOutput = document.querySelector('#fpsOutput');
+
+    let rpm = Number(rpmNumber.value);
+    let fps = Number(fpsNumber.value);
+    let angle = 0;
+    let previousFrameTime = performance.now();
+    let lastDrawTime = previousFrameTime;
+    let selectedImageUrl = null;
+
+    imagePicker.addEventListener('change', () => {
+      const [file] = imagePicker.files;
+      if (!file) return;
+
+      if (selectedImageUrl) URL.revokeObjectURL(selectedImageUrl);
+      selectedImageUrl = URL.createObjectURL(file);
+      rotatingImage.src = selectedImageUrl;
+      rotatingImage.alt = file.name;
+      imageName.value = file.name;
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (selectedImageUrl) URL.revokeObjectURL(selectedImageUrl);
+    });
+
+    function setRpm(value) {
+      rpm = Math.max(-999, Math.min(999, Number(value) || 0));
+      rpmNumber.value = rpm;
+      rpmRange.value = Math.max(Number(rpmRange.min), Math.min(Number(rpmRange.max), rpm));
+      rpmOutput.value = `${rpm} rpm`;
+    }
+
+    function setFps(value) {
+      fps = Math.max(1, Math.min(240, Number(value) || 1));
+      fpsNumber.value = fps;
+      fpsRange.value = Math.max(Number(fpsRange.min), Math.min(Number(fpsRange.max), fps));
+      fpsOutput.value = `${fps} fps`;
+    }
+
+    rpmRange.addEventListener('input', () => setRpm(rpmRange.value));
+    rpmNumber.addEventListener('input', () => setRpm(rpmNumber.value));
+    fpsRange.addEventListener('input', () => setFps(fpsRange.value));
+    fpsNumber.addEventListener('input', () => setFps(fpsNumber.value));
+
+    function animate(now) {
+      const elapsed = now - previousFrameTime;
+      previousFrameTime = now;
+      angle = (angle + elapsed * rpm * 0.006) % 360;
+
+      const frameInterval = 1000 / fps;
+      if (now - lastDrawTime >= frameInterval) {
+        rotor.style.transform = `rotate(${angle}deg)`;
+        lastDrawTime = now - ((now - lastDrawTime) % frameInterval);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

@@ -36,6 +36,7 @@ export function ChatPanel({ code, isOpen, onOpenChange, onApplyCode }: ChatPanel
   const [isSending, setIsSending] = useState(false)
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
   const [activeRequestAgent, setActiveRequestAgent] = useState<AiChatAgent | null>(null)
+  const [codexSessionId, setCodexSessionId] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<AiChatAgent>(AI_CHAT_DEFAULT_AGENT)
   const [selectedModelByAgent, setSelectedModelByAgent] = useState(createInitialSelectedModelByAgent)
   const [selectedPerformanceByAgent, setSelectedPerformanceByAgent] = useState(
@@ -100,7 +101,8 @@ export function ChatPanel({ code, isOpen, onOpenChange, onApplyCode }: ChatPanel
     const requestId = createAiChatId()
     const messageAtSubmit = inputValue
     const codeAtSubmit = code
-    const historyAtSubmit = createChatHistory(messages)
+    const sessionIdAtSubmit = selectedAgent === 'codex' ? codexSessionId : null
+    const historyAtSubmit = sessionIdAtSubmit ? [] : createChatHistory(messages)
     const selectionAtSubmit = {
       agent: selectedAgent,
       model: selectedModel,
@@ -125,10 +127,15 @@ export function ChatPanel({ code, isOpen, onOpenChange, onApplyCode }: ChatPanel
         message: messageAtSubmit,
         code: codeAtSubmit,
         history: historyAtSubmit,
+        ...(sessionIdAtSubmit ? { sessionId: sessionIdAtSubmit } : {}),
         agent: selectionAtSubmit.agent,
         model: selectionAtSubmit.model,
         performance: selectionAtSubmit.performance,
       })
+
+      if (selectionAtSubmit.agent === 'codex' && response.sessionId) {
+        setCodexSessionId(response.sessionId)
+      }
 
       appendMessage({
         role: 'assistant',

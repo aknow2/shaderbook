@@ -38,4 +38,16 @@ describe('PreviewModeControl', () => {
       'true',
     )
   })
+
+  it('does not change mode when disabled', () => {
+    const onChange = vi.fn()
+    render(<PreviewModeControl onChange={onChange} disabled />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Flipbook' }))
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Preview mode' }), { key: 'ArrowRight' })
+
+    expect(screen.getByRole('button', { name: 'Live' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Flipbook' })).toBeDisabled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

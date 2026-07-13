@@ -54,12 +54,12 @@ describe('AI chat shared contract constants', () => {
     expect(AI_CHAT_REQUEST_ID_MAX_LENGTH).toBe(128)
   })
 
-  it('AI_CHAT_SERVER_TIMEOUT_MS is 120000', () => {
-    expect(AI_CHAT_SERVER_TIMEOUT_MS).toBe(120000)
+  it('AI_CHAT_SERVER_TIMEOUT_MS is 300000', () => {
+    expect(AI_CHAT_SERVER_TIMEOUT_MS).toBe(300000)
   })
 
-  it('AI_CHAT_CLIENT_TIMEOUT_MS is 130000', () => {
-    expect(AI_CHAT_CLIENT_TIMEOUT_MS).toBe(130000)
+  it('AI_CHAT_CLIENT_TIMEOUT_MS is 310000', () => {
+    expect(AI_CHAT_CLIENT_TIMEOUT_MS).toBe(310000)
   })
 
   it('AiChatErrorCode can represent the specified error code union', () => {
@@ -109,12 +109,12 @@ describe('AI chat selection shared contract', () => {
     const typedPerformances = performances satisfies AiChatPerformance[]
 
     expect(new Set(typedPerformances)).toEqual(
-      new Set(['default', 'low', 'medium', 'high', 'xhigh', 'max']),
+      new Set(['default', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']),
     )
   })
 
-  it('uses GPT-5.5 as the Codex default model', () => {
-    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex).toBe('gpt-5.5')
+  it('uses GPT-5.6-Sol as the Codex default model', () => {
+    expect(AI_CHAT_DEFAULT_MODEL_BY_AGENT.codex).toBe('gpt-5.6-sol')
   })
 
   it('uses claude-default as the Claude default model', () => {
@@ -123,6 +123,9 @@ describe('AI chat selection shared contract', () => {
 
   it('defines model options per agent', () => {
     expect(AI_CHAT_MODEL_OPTIONS_BY_AGENT.codex.map((option) => option.id)).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
       'gpt-5.5',
       'gpt-5.4',
       'gpt-5.4-mini',
@@ -140,7 +143,7 @@ describe('AI chat selection shared contract', () => {
   it('normalizes an old request without agent, model, or performance to Codex defaults', () => {
     expect(normalizeAiChatMessageRequest(messageRequest())).toMatchObject({
       agent: 'codex',
-      model: 'gpt-5.5',
+      model: 'gpt-5.6-sol',
       performance: 'high',
     })
   })
@@ -190,14 +193,14 @@ describe('AI chat selection shared contract', () => {
   it('rejects codex agent with a Claude-only performance', () => {
     expect(() =>
       normalizeAiChatMessageRequest(
-        messageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'max' }),
+        messageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'default' }),
       ),
     ).toThrow('AI chat performance is not available for the selected agent.')
   })
 
   it('initializes selectedModelByAgent with each agent default model', () => {
     expect(createInitialSelectedModelByAgent()).toEqual({
-      codex: 'gpt-5.5',
+      codex: 'gpt-5.6-sol',
       claude: 'claude-default',
     })
   })
@@ -225,7 +228,7 @@ describe('AI chat selection shared contract', () => {
     ).toEqual({
       selectedAgent: 'claude',
       selectedModelByAgent: {
-        codex: 'gpt-5.5',
+        codex: 'gpt-5.6-sol',
         claude: 'claude-default',
       },
       selectedPerformanceByAgent: {
@@ -239,7 +242,7 @@ describe('AI chat selection shared contract', () => {
     expect(
       updateSelectedAiChatModelForAgent(createInitialSelectedModelByAgent(), 'claude', 'opus'),
     ).toEqual({
-      codex: 'gpt-5.5',
+      codex: 'gpt-5.6-sol',
       claude: 'opus',
     })
   })

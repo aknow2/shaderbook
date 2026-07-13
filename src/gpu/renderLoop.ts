@@ -20,6 +20,40 @@ export type StartRenderLoopInput = {
   onFpsChange: (fps: number) => void
 }
 
+export type RenderFrameInput = {
+  gpuState: RenderLoopGpuState
+  timeSeconds: number
+  width: number
+  height: number
+}
+
+export function renderFrame({ gpuState, timeSeconds, width, height }: RenderFrameInput): void {
+  if (!gpuState.pipeline) {
+    return
+  }
+
+  updateUniforms(gpuState.uniformBuffer, gpuState.device, timeSeconds, width, height)
+
+  const encoder = gpuState.device.createCommandEncoder()
+  const view = gpuState.context.getCurrentTexture().createView()
+  const pass = encoder.beginRenderPass({
+    colorAttachments: [
+      {
+        view,
+        clearValue: { r: 0, g: 0, b: 0, a: 1 },
+        loadOp: 'clear',
+        storeOp: 'store',
+      },
+    ],
+  })
+
+  pass.setPipeline(gpuState.pipeline)
+  pass.setBindGroup(0, gpuState.bindGroup)
+  pass.draw(3)
+  pass.end()
+  gpuState.device.queue.submit([encoder.finish()])
+}
+
 export function startRenderLoop({
   getGpuState,
   getResolution,
@@ -42,26 +76,7 @@ export function startRenderLoop({
     const gpuState = getGpuState()
     if (gpuState?.pipeline) {
       const { width, height } = getResolution()
-      updateUniforms(gpuState.uniformBuffer, gpuState.device, (now - startTime) / 1000, width, height)
-
-      const encoder = gpuState.device.createCommandEncoder()
-      const view = gpuState.context.getCurrentTexture().createView()
-      const pass = encoder.beginRenderPass({
-        colorAttachments: [
-          {
-            view,
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-            loadOp: 'clear',
-            storeOp: 'store',
-          },
-        ],
-      })
-
-      pass.setPipeline(gpuState.pipeline)
-      pass.setBindGroup(0, gpuState.bindGroup)
-      pass.draw(3)
-      pass.end()
-      gpuState.device.queue.submit([encoder.finish()])
+      renderFrame({ gpuState, timeSeconds: (now - startTime) / 1000, width, height })
     }
 
     const fpsElapsed = now - lastFpsTime

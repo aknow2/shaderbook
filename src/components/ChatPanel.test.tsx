@@ -114,8 +114,8 @@ describe('ChatPanel', () => {
     expect(getSettings()).toHaveClass('chat-controls')
     expect(getAgentSelect()).toHaveValue('codex')
     expect(getAgentSelect().selectedOptions[0]).toHaveTextContent('Codex CLI')
-    expect(getModelSelect()).toHaveValue('gpt-5.5')
-    expect(getModelSelect().selectedOptions[0]).toHaveTextContent('GPT-5.5')
+    expect(getModelSelect()).toHaveValue('gpt-5.6-sol')
+    expect(getModelSelect().selectedOptions[0]).toHaveTextContent('GPT-5.6-Sol')
     expect(getPerformanceSelect()).toHaveValue('high')
     expect(getPerformanceSelect().selectedOptions[0]).toHaveTextContent('High')
   })
@@ -131,6 +131,9 @@ describe('ChatPanel', () => {
     renderPanel()
 
     expect(Array.from(getModelSelect().options).map((option) => option.value)).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
       'gpt-5.5',
       'gpt-5.4',
       'gpt-5.4-mini',
@@ -172,6 +175,8 @@ describe('ChatPanel', () => {
       'Medium',
       'High',
       'XHigh',
+      'Max',
+      'Ultra',
     ])
 
     fireEvent.change(getAgentSelect(), { target: { value: 'claude' } })
@@ -392,9 +397,45 @@ describe('ChatPanel', () => {
 
     expect(payload).toMatchObject({
       agent: 'codex',
-      model: 'gpt-5.5',
+      model: 'gpt-5.6-sol',
       performance: 'high',
     })
+  })
+
+  it('Codex session id を保持し、2回目以降は履歴を再送しない', async () => {
+    const sessionId = '123e4567-e89b-42d3-a456-426614174000'
+    sendAiChatMessageMock
+      .mockResolvedValueOnce({
+        requestId: 'request-1',
+        sessionId,
+        message: {
+          role: 'assistant',
+          content: 'first answer',
+          proposedCode: null,
+          notes: [],
+        },
+      } satisfies AiChatMessageResponse)
+      .mockResolvedValueOnce({
+        requestId: 'request-2',
+        sessionId,
+        message: {
+          role: 'assistant',
+          content: 'second answer',
+          proposedCode: null,
+          notes: [],
+        },
+      } satisfies AiChatMessageResponse)
+    renderPanel()
+
+    submitMessage('first question')
+    await screen.findByText('first answer')
+    submitMessage('second question')
+    await screen.findByText('second answer')
+
+    const firstRequest = sendAiChatMessageMock.mock.calls[0][0] as AiChatMessageRequest
+    const secondRequest = sendAiChatMessageMock.mock.calls[1][0] as AiChatMessageRequest
+    expect(firstRequest.sessionId).toBeUndefined()
+    expect(secondRequest).toMatchObject({ sessionId, history: [] })
   })
 
   it('Claude 選択中の送信 payload に agent / model / performance が含まれる', async () => {

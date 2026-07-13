@@ -15,10 +15,14 @@ import { PreviewPane } from './components/PreviewPane'
 import { StatusBar, type CompileStatus } from './components/StatusBar'
 import { defaultShader } from './constants/defaultShader'
 import {
-  initialFlipbookSettings,
-  initialPreviewMode,
-  type FlipbookSettings,
-  type PreviewMode,
+  readStoredPreviewSettings,
+  writeStoredPreviewSettings,
+} from './previewSettingsStorage'
+import type {
+  FlipbookSettings,
+  LivePlaybackMode,
+  PreviewAspectRatio,
+  PreviewMode,
 } from './types/preview'
 
 type Resolution = {
@@ -125,8 +129,17 @@ function App() {
   const [resolution, setResolution] = useState<Resolution>({ width: 0, height: 0 })
   const [gpuName, setGpuName] = useState<string | undefined>('Unknown')
   const [shouldCompile, setShouldCompile] = useState(false)
-  const [previewMode, setPreviewMode] = useState<PreviewMode>(initialPreviewMode)
-  const [flipbook, setFlipbook] = useState<FlipbookSettings>(initialFlipbookSettings)
+  const [storedPreviewSettings] = useState(readStoredPreviewSettings)
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(storedPreviewSettings.previewMode)
+  const [previewAspectRatio, setPreviewAspectRatio] = useState<PreviewAspectRatio>(
+    storedPreviewSettings.previewAspectRatio,
+  )
+  const [flipbook, setFlipbook] = useState<FlipbookSettings>(storedPreviewSettings.flipbook)
+  const [livePlaybackMode, setLivePlaybackMode] = useState<LivePlaybackMode>(
+    storedPreviewSettings.livePlaybackMode,
+  )
+  const isFirstPreviewSettingsEffectRef = useRef(true)
+  const [isLiveRecording, setIsLiveRecording] = useState(false)
   const [editorWidthPercent, setEditorWidthPercent] = useState(DEFAULT_EDITOR_WIDTH_PERCENT)
   const [editorStackHeightPercent, setEditorStackHeightPercent] = useState(
     DEFAULT_EDITOR_STACK_HEIGHT_PERCENT,
@@ -136,8 +149,12 @@ function App() {
   const [isResizingEditorStack, setIsResizingEditorStack] = useState(false)
 
   const handleRun = useCallback(() => {
+    if (isLiveRecording) {
+      return
+    }
+
     setShouldCompile((current) => !current)
-  }, [])
+  }, [isLiveRecording])
 
   const handleApplyCode = useCallback(
     (nextCode: string) => {
@@ -148,8 +165,12 @@ function App() {
   )
 
   const handleReset = useCallback(() => {
+    if (isLiveRecording) {
+      return
+    }
+
     setCode(defaultShader)
-  }, [])
+  }, [isLiveRecording])
 
   const handleSave = useCallback(() => {
     const blob = new Blob([code], { type: 'text/plain' })
@@ -393,6 +414,20 @@ function App() {
   }, [code])
 
   useEffect(() => {
+    if (isFirstPreviewSettingsEffectRef.current) {
+      isFirstPreviewSettingsEffectRef.current = false
+      return
+    }
+
+    writeStoredPreviewSettings({
+      previewMode,
+      previewAspectRatio,
+      livePlaybackMode,
+      flipbook,
+    })
+  }, [previewMode, previewAspectRatio, livePlaybackMode, flipbook])
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => {
       const latestCode = latestCodeRef.current
 
@@ -441,7 +476,13 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header onRun={handleRun} onReset={handleReset} onSave={handleSave} />
+      <Header
+        onRun={handleRun}
+        onReset={handleReset}
+        onSave={handleSave}
+        isRunDisabled={isLiveRecording}
+        isResetDisabled={isLiveRecording}
+      />
       <main
         ref={workspaceRef}
         className={isResizingWorkspace ? 'workspace workspace-resizing' : 'workspace'}
@@ -508,9 +549,14 @@ function App() {
           code={code}
           shouldCompile={shouldCompile}
           previewMode={previewMode}
+          previewAspectRatio={previewAspectRatio}
           flipbook={flipbook}
           onPreviewModeChange={setPreviewMode}
+          onPreviewAspectRatioChange={setPreviewAspectRatio}
           onFlipbookChange={setFlipbook}
+          initialLivePlaybackMode={storedPreviewSettings.livePlaybackMode}
+          onLivePlaybackModeChange={setLivePlaybackMode}
+          onLiveRecordingChange={setIsLiveRecording}
           onCompileSuccess={() => {
             setCompileStatus('success')
             setErrorMessage(null)

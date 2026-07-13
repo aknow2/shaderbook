@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startRenderLoop, type RenderLoopGpuState } from './renderLoop'
+import { renderFrame, startRenderLoop, type RenderLoopGpuState } from './renderLoop'
 
 type RafCallback = FrameRequestCallback
 
@@ -84,6 +84,36 @@ function createGpuState(pipeline: GPURenderPipeline | null): {
         : { ...baseState, pipeline, bindGroup: { label: 'bind group' } as unknown as GPUBindGroup },
   }
 }
+
+describe('renderFrame', () => {
+  it('renders one frame with the given time and submits commands when pipeline exists', () => {
+    const pipeline = { label: 'pipeline' } as unknown as GPURenderPipeline
+    const { calls, state } = createGpuState(pipeline)
+
+    renderFrame({ gpuState: state, timeSeconds: 0, width: 800, height: 600 })
+
+    expect(calls).toEqual([
+      'writeBuffer',
+      'createCommandEncoder',
+      'createView',
+      'beginRenderPass',
+      'setPipeline',
+      'setBindGroup',
+      'draw',
+      'end',
+      'finish',
+      'submit',
+    ])
+  })
+
+  it('does nothing when pipeline is null', () => {
+    const { calls, state } = createGpuState(null)
+
+    renderFrame({ gpuState: state, timeSeconds: 0, width: 800, height: 600 })
+
+    expect(calls).toEqual([])
+  })
+})
 
 describe('startRenderLoop', () => {
   beforeEach(() => {

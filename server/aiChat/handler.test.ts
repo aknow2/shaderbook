@@ -149,6 +149,61 @@ describe('createAiChatHandler', () => {
     })
   })
 
+  it('returns the Codex session id from the runner', async () => {
+    const sessionId = '123e4567-e89b-42d3-a456-426614174000'
+    const result = await send({
+      url: '/messages',
+      body: validMessageRequest(),
+      runAiChatAgent: vi.fn(async () => ({
+        message: '回答',
+        proposedCode: null,
+        notes: [],
+        sessionId,
+      })),
+    })
+
+    expect(result.json).toMatchObject({ sessionId })
+  })
+
+  it('accepts a UUID Codex session id', async () => {
+    const sessionId = '123e4567-e89b-42d3-a456-426614174000'
+    const { response, runAiChatAgent } = await send({
+      url: '/messages',
+      body: validMessageRequest({ sessionId }),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(runAiChatAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId }),
+      expect.anything(),
+    )
+  })
+
+  it('rejects a non-UUID session id', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({ sessionId: '--last' }),
+    })
+
+    expectInvalidRequest(response)
+  })
+
+  it('rejects a session id for Claude', async () => {
+    const { response } = await send({
+      url: '/messages',
+      body: validMessageRequest({
+        agent: 'claude',
+        model: 'claude-default',
+        sessionId: '123e4567-e89b-42d3-a456-426614174000',
+      }),
+    })
+
+    expectInvalidRequestMessage(
+      response,
+      'AI chat sessions are only available for Codex.',
+    )
+  })
+
   it('returns 400 INVALID_REQUEST when request body JSON parsing fails', async () => {
     const { response } = await send({
       url: '/messages',
@@ -319,7 +374,7 @@ describe('createAiChatHandler', () => {
     )
   })
 
-  it('normalizes an old request without agent or model to codex and GPT-5.5', async () => {
+  it('normalizes an old request without agent or model to Codex defaults', async () => {
     const runAiChatAgent = vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
@@ -335,13 +390,13 @@ describe('createAiChatHandler', () => {
     expect(runAiChatAgent).toHaveBeenCalledWith(
       expect.objectContaining({
         agent: 'codex',
-        model: 'gpt-5.5',
+        model: 'gpt-5.6-sol',
       }),
       expect.anything(),
     )
   })
 
-  it('normalizes a codex request without model to GPT-5.5', async () => {
+  it('normalizes a codex request without model to GPT-5.6-Sol', async () => {
     const runAiChatAgent = vi.fn(async () => ({
       message: '回答',
       proposedCode: null,
@@ -355,7 +410,7 @@ describe('createAiChatHandler', () => {
     })
 
     expect(runAiChatAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ agent: 'codex', model: 'gpt-5.5' }),
+      expect.objectContaining({ agent: 'codex', model: 'gpt-5.6-sol' }),
       expect.anything(),
     )
   })
@@ -452,7 +507,7 @@ describe('createAiChatHandler', () => {
   it('returns 400 INVALID_REQUEST for codex with a claude-only performance', async () => {
     const { response } = await send({
       url: '/messages',
-      body: validMessageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'max' }),
+      body: validMessageRequest({ agent: 'codex', model: 'gpt-5.5', performance: 'default' }),
     })
 
     expectInvalidRequestMessage(

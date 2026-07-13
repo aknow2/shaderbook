@@ -30,6 +30,22 @@ describe('AI chat fetch client', () => {
     await expect(sendAiChatMessage(messageRequest())).resolves.toEqual(responseBody)
   })
 
+  it('returns a successful response with a session id', async () => {
+    const responseBody: AiChatMessageResponse = {
+      requestId: 'request-1',
+      sessionId: '123e4567-e89b-42d3-a456-426614174000',
+      message: {
+        role: 'assistant',
+        content: 'Done',
+        proposedCode: null,
+        notes: [],
+      },
+    }
+    stubFetch(jsonResponse(200, responseBody))
+
+    await expect(sendAiChatMessage(messageRequest())).resolves.toEqual(responseBody)
+  })
+
   it('maps 400 INVALID_REQUEST to the server message display error', async () => {
     stubFetch(errorResponse(400, 'INVALID_REQUEST', 'Message is required.'))
 

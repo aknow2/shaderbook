@@ -16,8 +16,8 @@
     - `AI_CHAT_CODE_MAX_LENGTH` が `200000` である
     - `AI_CHAT_HISTORY_MAX_ITEMS` が `20` である
     - `AI_CHAT_REQUEST_ID_MAX_LENGTH` が `128` である
-    - `AI_CHAT_SERVER_TIMEOUT_MS` が `120000` である
-    - `AI_CHAT_CLIENT_TIMEOUT_MS` が `130000` である
+    - `AI_CHAT_SERVER_TIMEOUT_MS` が `300000` である
+    - `AI_CHAT_CLIENT_TIMEOUT_MS` が `310000` である
     - `AiChatErrorCode` が仕様の error code union を表現できる
   - DoD:
     - `AiChatMessageRequest`, `AiChatMessageResponse`, `AiChatCancelRequest`, `AiChatCancelResponse`, `AiChatErrorResponse` が 1 ファイルに定義されている
@@ -240,7 +240,7 @@
     - cancel API が `{ canceled: true }` を返す
   - DoD:
     - `/api/ai-chat/messages` と `/api/ai-chat/cancel` の fetch が 1 ファイルに集約されている
-    - `sendAiChatMessage` は HTTP client timeout 130000ms を持つ
+    - `sendAiChatMessage` は HTTP client timeout 310000ms を持つ
     - fetch reject は接続不能、ネットワークエラー、client timeout の abort を含めて一律 `AI chat server is not running.` になる
     - fetch mock は各 test file 内で完結し、`src/test/setup.ts` は変更しない
     - timeout test は fake timers を使い、実ネットワークへ出さない

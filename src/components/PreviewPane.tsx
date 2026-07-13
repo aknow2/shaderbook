@@ -20,12 +20,19 @@ import {
   type FlipbookGrid,
 } from '../gpu/renderFlipbook'
 import {
+  renderFrame,
   startRenderLoop,
   type RenderLoopController,
   type RenderLoopGpuState,
 } from '../gpu/renderLoop'
 import { wrapShader } from '../gpu/shaderWrapper'
-import type { FlipbookSettings, PreviewMode } from '../types/preview'
+import type {
+  FlipbookSettings,
+  LivePlaybackMode,
+  LiveRecordingStatus,
+  PreviewAspectRatio,
+  PreviewMode,
+} from '../types/preview'
 import { FlipbookControls } from './FlipbookControls'
 import { FlipbookLabels } from './FlipbookLabels'
 import { PreviewModeControl } from './PreviewModeControl'
@@ -45,13 +52,23 @@ type GpuState = {
   | { pipeline: GPURenderPipeline; bindGroup: GPUBindGroup }
 )
 
+type CanvasCssSize = {
+  width: number
+  height: number
+}
+
 export type PreviewPaneProps = {
   code: string
   shouldCompile: boolean
   previewMode: PreviewMode
+  previewAspectRatio: PreviewAspectRatio
   flipbook: FlipbookSettings
+  initialLivePlaybackMode: LivePlaybackMode
+  onLivePlaybackModeChange: (mode: LivePlaybackMode) => void
   onPreviewModeChange: (mode: PreviewMode) => void
+  onPreviewAspectRatioChange: (aspectRatio: PreviewAspectRatio) => void
   onFlipbookChange: (settings: FlipbookSettings) => void
+  onLiveRecordingChange: (isRecording: boolean) => void
   onCompileSuccess: () => void
   onCompileError: (message: string) => void
   onFpsChange: (fps: number) => void
@@ -77,19 +94,39 @@ function getGpuName(adapterInfo: GPUAdapterInfo | undefined): string | undefined
   )
 }
 
-function getResizeSize(entry: ResizeObserverEntry): { width: number; height: number } {
-  const boxSize = entry.devicePixelContentBoxSize?.[0]
-  if (boxSize) {
+function getFrameCssSize(entry: ResizeObserverEntry): CanvasCssSize {
+  return {
+    width: Math.max(1, entry.contentRect.width),
+    height: Math.max(1, entry.contentRect.height),
+  }
+}
+
+export function computeCanvasCssSize(
+  frameWidth: number,
+  frameHeight: number,
+  aspectRatio: PreviewAspectRatio,
+): CanvasCssSize {
+  const safeFrameWidth = Math.max(1, frameWidth)
+  const safeFrameHeight = Math.max(1, frameHeight)
+
+  if (aspectRatio === 'fit') {
+    return { width: safeFrameWidth, height: safeFrameHeight }
+  }
+
+  const targetRatio =
+    aspectRatio === '1:1' ? 1 : aspectRatio === '16:9' ? 16 / 9 : 9 / 16
+  const frameRatio = safeFrameWidth / safeFrameHeight
+
+  if (frameRatio > targetRatio) {
     return {
-      width: Math.max(1, Math.floor(boxSize.inlineSize)),
-      height: Math.max(1, Math.floor(boxSize.blockSize)),
+      width: safeFrameHeight * targetRatio,
+      height: safeFrameHeight,
     }
   }
 
-  const dpr = window.devicePixelRatio || 1
   return {
-    width: Math.max(1, Math.floor(entry.contentRect.width * dpr)),
-    height: Math.max(1, Math.floor(entry.contentRect.height * dpr)),
+    width: safeFrameWidth,
+    height: safeFrameWidth / targetRatio,
   }
 }
 
@@ -116,9 +153,14 @@ export function PreviewPane({
   code,
   shouldCompile,
   previewMode,
+  previewAspectRatio,
   flipbook,
+  initialLivePlaybackMode,
+  onLivePlaybackModeChange,
   onPreviewModeChange,
+  onPreviewAspectRatioChange,
   onFlipbookChange,
+  onLiveRecordingChange,
   onCompileSuccess,
   onCompileError,
   onFpsChange,
@@ -126,6 +168,7 @@ export function PreviewPane({
   onGpuInfo,
 }: PreviewPaneProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const gpuRef = useRef<GpuState | null>(null)
   const isFirstRunEffectRef = useRef(true)
@@ -134,7 +177,9 @@ export function PreviewPane({
   const compileSeqRef = useRef(0)
   const codeRef = useRef(code)
   const previewModeRef = useRef(previewMode)
+  const previewAspectRatioRef = useRef(previewAspectRatio)
   const flipbookRef = useRef(flipbook)
+  const frameCssSizeRef = useRef<CanvasCssSize | null>(null)
   const renderLoopRef = useRef<RenderLoopController | null>(null)
   const pendingFlipbookFrameRef = useRef<number | null>(null)
   const handledPreviewModeChangeRef = useRef<PreviewMode | null>(null)
@@ -142,8 +187,11 @@ export function PreviewPane({
   const latestFlipbookResourcesRef = useRef<FlipbookFrameResources | null>(null)
   const deviceLostRef = useRef(false)
   const callbacksRef = useRef({
+    onLivePlaybackModeChange,
     onPreviewModeChange,
+    onPreviewAspectRatioChange,
     onFlipbookChange,
+    onLiveRecordingChange,
     onCompileSuccess,
     onCompileError,
     onFpsChange,
@@ -151,19 +199,38 @@ export function PreviewPane({
     onGpuInfo,
   })
   const [previewMessage, setPreviewMessage] = useState<string | null>(null)
+  const [recordingMessage, setRecordingMessage] = useState<string | null>(null)
+  const [recordingStatus, setRecordingStatus] = useState<LiveRecordingStatus>('idle')
+  const [isPipelineReady, setIsPipelineReady] = useState(false)
+  const [isLiveRendering, setIsLiveRendering] = useState(false)
+  const [livePlaybackMode, setLivePlaybackMode] = useState<LivePlaybackMode>(
+    initialLivePlaybackMode,
+  )
+  const livePlaybackModeRef = useRef<LivePlaybackMode>(livePlaybackMode)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [flipbookDraft, setFlipbookDraft] = useState<FlipbookDraft>(() =>
     flipbookSettingsToDraft(flipbook),
   )
   const flipbookDraftRef = useRef(flipbookDraft)
   const [latestGrid, setLatestGrid] = useState<FlipbookGrid | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingStreamRef = useRef<MediaStream | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordingObjectUrlRef = useRef<string | null>(null)
+  const shouldDownloadRecordingRef = useRef(false)
+  const recordingStatusRef = useRef<LiveRecordingStatus>('idle')
 
   codeRef.current = code
   previewModeRef.current = previewMode
+  livePlaybackModeRef.current = livePlaybackMode
+  previewAspectRatioRef.current = previewAspectRatio
   flipbookDraftRef.current = flipbookDraft
   callbacksRef.current = {
+    onLivePlaybackModeChange,
     onPreviewModeChange,
+    onPreviewAspectRatioChange,
     onFlipbookChange,
+    onLiveRecordingChange,
     onCompileSuccess,
     onCompileError,
     onFpsChange,
@@ -171,9 +238,16 @@ export function PreviewPane({
     onGpuInfo,
   }
 
+  const setLiveRecordingStatus = useCallback((status: LiveRecordingStatus) => {
+    recordingStatusRef.current = status
+    setRecordingStatus(status)
+  }, [])
+
   const stopLiveLoop = useCallback(() => {
     renderLoopRef.current?.stop()
     renderLoopRef.current = null
+    setIsLiveRendering(false)
+    callbacksRef.current.onFpsChange(0)
   }, [])
 
   const startLiveLoop = useCallback(() => {
@@ -190,7 +264,39 @@ export function PreviewPane({
       }),
       onFpsChange: (fps) => callbacksRef.current.onFpsChange(fps),
     })
+    setIsLiveRendering(true)
   }, [])
+
+  const renderLiveFrameOnce = useCallback(() => {
+    const canvas = canvasRef.current
+    const currentGpu = gpuRef.current
+    if (
+      previewModeRef.current !== 'live' ||
+      livePlaybackModeRef.current !== 'once' ||
+      deviceLostRef.current ||
+      !canvas ||
+      !currentGpu?.pipeline
+    ) {
+      return
+    }
+
+    renderFrame({
+      gpuState: currentGpu as RenderLoopGpuState,
+      timeSeconds: 0,
+      width: canvas.width,
+      height: canvas.height,
+    })
+  }, [])
+
+  const startLivePlayback = useCallback(() => {
+    if (livePlaybackModeRef.current === 'once') {
+      stopLiveLoop()
+      renderLiveFrameOnce()
+      return
+    }
+
+    startLiveLoop()
+  }, [renderLiveFrameOnce, startLiveLoop, stopLiveLoop])
 
   const cancelPendingFlipbookRender = useCallback(() => {
     if (pendingFlipbookFrameRef.current !== null) {
@@ -203,6 +309,147 @@ export function PreviewPane({
     destroyFlipbookFrameResources(latestFlipbookResourcesRef.current)
     latestFlipbookResourcesRef.current = null
   }, [])
+
+  const revokeRecordingObjectUrl = useCallback(() => {
+    if (recordingObjectUrlRef.current) {
+      URL.revokeObjectURL(recordingObjectUrlRef.current)
+      recordingObjectUrlRef.current = null
+    }
+  }, [])
+
+  const stopRecordingTracks = useCallback(() => {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop())
+    recordingStreamRef.current = null
+  }, [])
+
+  const cleanupRecordingRefs = useCallback(() => {
+    stopRecordingTracks()
+    revokeRecordingObjectUrl()
+    mediaRecorderRef.current = null
+    recordedChunksRef.current = []
+    shouldDownloadRecordingRef.current = false
+  }, [revokeRecordingObjectUrl, stopRecordingTracks])
+
+  const finishRecording = useCallback(() => {
+    const shouldDownload = shouldDownloadRecordingRef.current
+    const chunks = recordedChunksRef.current
+
+    if (shouldDownload && chunks.length > 0) {
+      const blob = new Blob(chunks, { type: 'video/webm' })
+      const url = URL.createObjectURL(blob)
+      const now = new Date()
+      const pad = (value: number) => String(value).padStart(2, '0')
+      const timestamp = [
+        now.getFullYear(),
+        pad(now.getMonth() + 1),
+        pad(now.getDate()),
+        '-',
+        pad(now.getHours()),
+        pad(now.getMinutes()),
+        pad(now.getSeconds()),
+      ].join('')
+      const anchor = document.createElement('a')
+
+      recordingObjectUrlRef.current = url
+      anchor.href = url
+      anchor.download = `shaderbook-live-recording-${timestamp}.webm`
+      document.body.append(anchor)
+      anchor.click()
+      anchor.remove()
+      setRecordingMessage(null)
+    } else if (shouldDownload) {
+      setRecordingMessage('Recording did not produce any video data.')
+    }
+
+    cleanupRecordingRefs()
+    setLiveRecordingStatus('idle')
+    callbacksRef.current.onLiveRecordingChange(false)
+  }, [cleanupRecordingRefs, setLiveRecordingStatus])
+
+  const stopLiveRecording = useCallback(
+    (options: { download: boolean } = { download: true }) => {
+      const recorder = mediaRecorderRef.current
+
+      if (!recorder || recordingStatusRef.current === 'idle') {
+        cleanupRecordingRefs()
+        setLiveRecordingStatus('idle')
+        callbacksRef.current.onLiveRecordingChange(false)
+        return
+      }
+
+      shouldDownloadRecordingRef.current = options.download
+      setLiveRecordingStatus('stopping')
+
+      if (recorder.state === 'inactive') {
+        finishRecording()
+        return
+      }
+
+      try {
+        recorder.stop()
+      } catch {
+        cleanupRecordingRefs()
+        setLiveRecordingStatus('error')
+        callbacksRef.current.onLiveRecordingChange(false)
+        setRecordingMessage('Unable to stop live recording.')
+      }
+    },
+    [cleanupRecordingRefs, finishRecording, setLiveRecordingStatus],
+  )
+
+  const startLiveRecording = useCallback(() => {
+    const canvas = canvasRef.current
+    const currentGpu = gpuRef.current
+    const captureStream = canvas?.captureStream
+    const mediaRecorderConstructor = window.MediaRecorder
+
+    setRecordingMessage(null)
+
+    if (
+      previewModeRef.current !== 'live' ||
+      !canvas ||
+      !currentGpu?.pipeline ||
+      typeof captureStream !== 'function' ||
+      typeof mediaRecorderConstructor !== 'function' ||
+      !mediaRecorderConstructor.isTypeSupported('video/webm')
+    ) {
+      setLiveRecordingStatus('unsupported')
+      callbacksRef.current.onLiveRecordingChange(false)
+      setRecordingMessage('Live recording is not supported in this browser.')
+      return
+    }
+
+    try {
+      const stream = captureStream.call(canvas, 60)
+      const recorder = new mediaRecorderConstructor(stream, { mimeType: 'video/webm' })
+
+      recordedChunksRef.current = []
+      recordingStreamRef.current = stream
+      mediaRecorderRef.current = recorder
+      shouldDownloadRecordingRef.current = false
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data)
+        }
+      }
+      recorder.onerror = () => {
+        setRecordingMessage('Live recording failed.')
+        stopLiveRecording({ download: false })
+      }
+      recorder.onstop = () => {
+        finishRecording()
+      }
+      recorder.start()
+      setLiveRecordingStatus('recording')
+      callbacksRef.current.onLiveRecordingChange(true)
+    } catch {
+      cleanupRecordingRefs()
+      setLiveRecordingStatus('error')
+      callbacksRef.current.onLiveRecordingChange(false)
+      setRecordingMessage('Unable to start live recording.')
+    }
+  }, [cleanupRecordingRefs, finishRecording, setLiveRecordingStatus, stopLiveRecording])
 
   const scheduleFlipbookRender = useCallback((reason: string) => {
     void reason
@@ -270,6 +517,35 @@ export function PreviewPane({
     [scheduleFlipbookRender],
   )
 
+  const applyCanvasSize = useCallback(
+    (frameSize: CanvasCssSize) => {
+      const canvas = canvasRef.current
+      const stage = stageRef.current
+      if (!canvas || !stage) {
+        return
+      }
+
+      frameCssSizeRef.current = frameSize
+      const canvasCssSize = computeCanvasCssSize(
+        frameSize.width,
+        frameSize.height,
+        previewAspectRatioRef.current,
+      )
+      const dpr = window.devicePixelRatio || 1
+      const width = Math.max(1, Math.floor(canvasCssSize.width * dpr))
+      const height = Math.max(1, Math.floor(canvasCssSize.height * dpr))
+
+      stage.style.width = `${canvasCssSize.width}px`
+      stage.style.height = `${canvasCssSize.height}px`
+      canvas.width = width
+      canvas.height = height
+      callbacksRef.current.onResolutionChange(width, height)
+      scheduleFlipbookRender('resize')
+      renderLiveFrameOnce()
+    },
+    [renderLiveFrameOnce, scheduleFlipbookRender],
+  )
+
   const compile = useCallback(async (wgslSourceCode: string) => {
     const currentGpu = gpuRef.current
     if (!currentGpu || deviceLostRef.current) {
@@ -303,9 +579,12 @@ export function PreviewPane({
       }
 
       gpuRef.current = { ...latestGpu, pipeline, bindGroup }
+      setIsPipelineReady(true)
       callbacksRef.current.onCompileSuccess()
       if (previewModeRef.current === 'flipbook') {
         scheduleFlipbookRender('compile-success')
+      } else {
+        startLivePlayback()
       }
     } catch (error) {
       if (
@@ -318,10 +597,14 @@ export function PreviewPane({
 
       callbacksRef.current.onCompileError(getErrorMessage(error))
     }
-  }, [scheduleFlipbookRender])
+  }, [scheduleFlipbookRender, startLivePlayback])
 
   const handlePreviewModeChange = useCallback(
     (nextMode: PreviewMode) => {
+      if (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping') {
+        return
+      }
+
       if (nextMode === previewModeRef.current) {
         return
       }
@@ -343,19 +626,23 @@ export function PreviewPane({
       destroyLatestFlipbookResources()
       setLatestGrid(null)
       callbacksRef.current.onPreviewModeChange('live')
-      startLiveLoop()
+      startLivePlayback()
     },
     [
       cancelPendingFlipbookRender,
       commitFlipbookDraft,
       destroyLatestFlipbookResources,
       scheduleFlipbookRender,
-      startLiveLoop,
+      startLivePlayback,
       stopLiveLoop,
     ],
   )
 
   const handleFullscreenClick = useCallback(() => {
+    if (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping') {
+      return
+    }
+
     const frame = frameRef.current
     if (!frame) {
       return
@@ -370,6 +657,44 @@ export function PreviewPane({
       // The browser may reject fullscreen requests outside a trusted user gesture.
     })
   }, [])
+
+  const handleLivePlaybackModeChange = useCallback(
+    (nextPlaybackMode: LivePlaybackMode) => {
+      if (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping') {
+        return
+      }
+
+      if (nextPlaybackMode === livePlaybackModeRef.current) {
+        return
+      }
+
+      livePlaybackModeRef.current = nextPlaybackMode
+      setLivePlaybackMode(nextPlaybackMode)
+      callbacksRef.current.onLivePlaybackModeChange(nextPlaybackMode)
+
+      if (previewModeRef.current !== 'live') {
+        return
+      }
+
+      startLivePlayback()
+    },
+    [startLivePlayback],
+  )
+
+  const handleAspectRatioChange = useCallback(
+    (nextAspectRatio: PreviewAspectRatio) => {
+      if (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping') {
+        return
+      }
+
+      previewAspectRatioRef.current = nextAspectRatio
+      callbacksRef.current.onPreviewAspectRatioChange(nextAspectRatio)
+      if (frameCssSizeRef.current) {
+        applyCanvasSize(frameCssSizeRef.current)
+      }
+    },
+    [applyCanvasSize],
+  )
 
   const handleDownloadFlipbookPngs = useCallback(async () => {
     const canvas = canvasRef.current
@@ -386,6 +711,7 @@ export function PreviewPane({
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === frameRef.current)
       scheduleFlipbookRender('fullscreen')
+      renderLiveFrameOnce()
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -394,7 +720,7 @@ export function PreviewPane({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
-  }, [scheduleFlipbookRender])
+  }, [renderLiveFrameOnce, scheduleFlipbookRender])
 
   useEffect(() => {
     const previousSettings = flipbookRef.current
@@ -411,6 +737,13 @@ export function PreviewPane({
   }, [flipbook])
 
   useEffect(() => {
+    previewAspectRatioRef.current = previewAspectRatio
+    if (frameCssSizeRef.current) {
+      applyCanvasSize(frameCssSizeRef.current)
+    }
+  }, [applyCanvasSize, previewAspectRatio])
+
+  useEffect(() => {
     if (isFirstPreviewModeEffectRef.current) {
       isFirstPreviewModeEffectRef.current = false
       return
@@ -424,11 +757,18 @@ export function PreviewPane({
     previewModeRef.current = previewMode
     displayGenerationRef.current += 1
 
+    if (
+      previewMode !== 'live' &&
+      (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping')
+    ) {
+      stopLiveRecording({ download: true })
+    }
+
     if (previewMode === 'live') {
       cancelPendingFlipbookRender()
       destroyLatestFlipbookResources()
       setLatestGrid(null)
-      startLiveLoop()
+      startLivePlayback()
       return
     }
 
@@ -439,7 +779,8 @@ export function PreviewPane({
     destroyLatestFlipbookResources,
     previewMode,
     scheduleFlipbookRender,
-    startLiveLoop,
+    startLivePlayback,
+    stopLiveRecording,
     stopLiveLoop,
   ])
 
@@ -453,21 +794,17 @@ export function PreviewPane({
     const myLifecycle = ++lifecycleGenerationRef.current
     let resizeObserver: ResizeObserver | null = null
 
-    const applyResolution = (width: number, height: number) => {
-      canvas.width = width
-      canvas.height = height
-      callbacksRef.current.onResolutionChange(width, height)
-      scheduleFlipbookRender('resize')
-    }
-
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) {
         return
       }
 
-      const { width, height } = getResizeSize(entry)
-      applyResolution(width, height)
+      if (recordingStatusRef.current === 'recording') {
+        stopLiveRecording({ download: true })
+      }
+
+      applyCanvasSize(getFrameCssSize(entry))
     })
     resizeObserver.observe(frame)
 
@@ -497,6 +834,7 @@ export function PreviewPane({
           pipeline: null,
           bindGroup: null,
         }
+        setIsPipelineReady(false)
 
         await compile(codeRef.current)
 
@@ -505,7 +843,7 @@ export function PreviewPane({
         }
 
         if (previewModeRef.current === 'live') {
-          startLiveLoop()
+          startLivePlayback()
         } else {
           scheduleFlipbookRender('initial')
         }
@@ -517,6 +855,8 @@ export function PreviewPane({
 
           deviceLostRef.current = true
           displayGenerationRef.current += 1
+          setIsPipelineReady(false)
+          stopLiveRecording({ download: false })
           stopLiveLoop()
           cancelPendingFlipbookRender()
           destroyLatestFlipbookResources()
@@ -536,25 +876,32 @@ export function PreviewPane({
     return () => {
       lifecycleGenerationRef.current += 1
       displayGenerationRef.current += 1
+      stopLiveRecording({ download: false })
       stopLiveLoop()
       cancelPendingFlipbookRender()
       destroyLatestFlipbookResources()
       resizeObserver?.disconnect()
       gpuRef.current?.device.destroy()
       gpuRef.current = null
+      setIsPipelineReady(false)
     }
   }, [
+    applyCanvasSize,
     cancelPendingFlipbookRender,
     compile,
     destroyLatestFlipbookResources,
-    scheduleFlipbookRender,
-    startLiveLoop,
+    startLivePlayback,
+    stopLiveRecording,
     stopLiveLoop,
   ])
 
   useEffect(() => {
     if (isFirstRunEffectRef.current) {
       isFirstRunEffectRef.current = false
+      return
+    }
+
+    if (recordingStatusRef.current === 'recording' || recordingStatusRef.current === 'stopping') {
       return
     }
 
@@ -572,7 +919,11 @@ export function PreviewPane({
       <div className="panel-header preview-header">
         <h2 id="preview-title">Preview</h2>
         <div className="preview-tools">
-          <PreviewModeControl value={previewMode} onChange={handlePreviewModeChange} />
+          <PreviewModeControl
+            value={previewMode}
+            onChange={handlePreviewModeChange}
+            disabled={recordingStatus === 'recording' || recordingStatus === 'stopping'}
+          />
           {previewMode === 'flipbook' ? (
             <FlipbookControls
               settings={flipbook}
@@ -599,13 +950,95 @@ export function PreviewPane({
               Download PNGs
             </button>
           ) : null}
-          <select className="control-select" aria-label="Preview scale" defaultValue="fit">
+          {previewMode === 'live' ? (
+            <select
+              className="control-select"
+              aria-label="Live playback mode"
+              value={livePlaybackMode}
+              disabled={recordingStatus === 'recording' || recordingStatus === 'stopping'}
+              onChange={(event) =>
+                handleLivePlaybackModeChange(event.currentTarget.value as LivePlaybackMode)
+              }
+            >
+              <option value="loop">Loop</option>
+              <option value="once">Once</option>
+            </select>
+          ) : null}
+          <select
+            className="control-select"
+            aria-label="Preview aspect ratio"
+            value={previewAspectRatio}
+            disabled={recordingStatus === 'recording' || recordingStatus === 'stopping'}
+            onChange={(event) =>
+              handleAspectRatioChange(event.currentTarget.value as PreviewAspectRatio)
+            }
+          >
             <option value="fit">Fit</option>
+            <option value="1:1">1:1</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
           </select>
+          {previewMode === 'live' && livePlaybackMode === 'loop' ? (
+            <button
+              type="button"
+              className="control-button"
+              aria-label={isLiveRendering ? 'Stop render' : 'Resume render'}
+              aria-pressed={isLiveRendering}
+              disabled={
+                !isPipelineReady ||
+                recordingStatus === 'recording' ||
+                recordingStatus === 'stopping'
+              }
+              onClick={() => {
+                if (isLiveRendering) {
+                  stopLiveLoop()
+                } else {
+                  startLiveLoop()
+                }
+              }}
+            >
+              {isLiveRendering ? 'Stop Render' : 'Resume Render'}
+            </button>
+          ) : null}
+          {previewMode === 'live' ? (
+            <button
+              type="button"
+              className="control-button"
+              aria-label={
+                recordingStatus === 'recording'
+                  ? 'Stop live recording'
+                  : recordingStatus === 'stopping'
+                    ? 'Saving live recording'
+                    : 'Start live recording'
+              }
+              aria-pressed={recordingStatus === 'recording'}
+              disabled={
+                livePlaybackMode === 'once' ||
+                recordingStatus === 'stopping' ||
+                recordingStatus === 'unsupported' ||
+                (recordingStatus !== 'recording' && !isPipelineReady)
+              }
+              onClick={() => {
+                if (recordingStatus === 'recording') {
+                  stopLiveRecording({ download: true })
+                } else {
+                  startLiveLoop()
+                  startLiveRecording()
+                }
+              }}
+            >
+              {recordingStatus === 'recording'
+                ? 'Stop'
+                : recordingStatus === 'stopping'
+                  ? 'Saving...'
+                  : 'Record'}
+            </button>
+          ) : null}
           <button
             type="button"
             className="control-button"
             aria-label={isFullscreen ? 'Exit fullscreen preview' : 'Enter fullscreen preview'}
+            disabled={recordingStatus === 'recording' || recordingStatus === 'stopping'}
             onClick={handleFullscreenClick}
           >
             {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
@@ -618,8 +1051,9 @@ export function PreviewPane({
             {previewMessage}
           </div>
         ) : (
-          <>
+          <div ref={stageRef} className="canvas-stage">
             <canvas
+              className="preview-canvas"
               ref={canvasRef}
               aria-label={
                 previewMode === 'flipbook'
@@ -627,10 +1061,15 @@ export function PreviewPane({
                   : 'WebGPU shader preview'
               }
             />
+            {recordingMessage ? (
+              <div className="recording-message" role="status">
+                {recordingMessage}
+              </div>
+            ) : null}
             {previewMode === 'flipbook' ? (
               <FlipbookLabels grid={latestGrid} devicePixelRatio={window.devicePixelRatio || 1} />
             ) : null}
-          </>
+          </div>
         )}
       </div>
     </section>

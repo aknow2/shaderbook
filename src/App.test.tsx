@@ -5,7 +5,7 @@ import App from './App'
 import type { AiChatMessageRequest, AiChatMessageResponse } from './aiChat/types'
 import type { PreviewPaneProps } from './components/PreviewPane'
 import { defaultShader } from './constants/defaultShader'
-import { initialFlipbookSettings } from './types/preview'
+import { initialFlipbookSettings, initialPreviewAspectRatio } from './types/preview'
 
 const mocks = vi.hoisted(() => ({
   PreviewPane: vi.fn(() => null),
@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 const SHADER_DRAFT_STORAGE_KEY = 'shaderbook:shader-draft:v1'
+const PREVIEW_SETTINGS_STORAGE_KEY = 'shaderbook:preview-settings:v1'
 
 vi.mock('./components/PreviewPane', () => ({
   PreviewPane: mocks.PreviewPane,
@@ -195,6 +196,88 @@ describe('App shader draft persistence', () => {
   })
 })
 
+describe('App preview settings persistence', () => {
+  beforeEach(() => {
+    mocks.PreviewPane.mockClear()
+  })
+
+  it('passes stored preview settings to PreviewPane', () => {
+    window.localStorage.setItem(
+      PREVIEW_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        previewMode: 'flipbook',
+        previewAspectRatio: '9:16',
+        livePlaybackMode: 'once',
+        flipbook: { frameCount: 8, frameIntervalMs: 250, startTimeMs: 1000 },
+      }),
+    )
+
+    render(<App />)
+
+    expect(getLastPreviewPaneProps()).toEqual(
+      expect.objectContaining({
+        previewMode: 'flipbook',
+        previewAspectRatio: '9:16',
+        initialLivePlaybackMode: 'once',
+        flipbook: { frameCount: 8, frameIntervalMs: 250, startTimeMs: 1000 },
+      }),
+    )
+  })
+
+  it('falls back to the initial preview settings when the stored value is invalid', () => {
+    window.localStorage.setItem(PREVIEW_SETTINGS_STORAGE_KEY, '{"version":0}')
+
+    render(<App />)
+
+    expect(getLastPreviewPaneProps()).toEqual(
+      expect.objectContaining({
+        previewMode: 'live',
+        previewAspectRatio: initialPreviewAspectRatio,
+        initialLivePlaybackMode: 'loop',
+        flipbook: initialFlipbookSettings,
+      }),
+    )
+  })
+
+  it('persists preview settings when they change, but not on mount', () => {
+    render(<App />)
+
+    expect(window.localStorage.getItem(PREVIEW_SETTINGS_STORAGE_KEY)).toBeNull()
+
+    act(() => {
+      getLastPreviewPaneProps().onPreviewModeChange('flipbook')
+    })
+
+    expect(
+      JSON.parse(window.localStorage.getItem(PREVIEW_SETTINGS_STORAGE_KEY) ?? '{}'),
+    ).toEqual({
+      version: 1,
+      previewMode: 'flipbook',
+      previewAspectRatio: initialPreviewAspectRatio,
+      livePlaybackMode: 'loop',
+      flipbook: initialFlipbookSettings,
+    })
+
+    act(() => {
+      const props = getLastPreviewPaneProps()
+      props.onPreviewAspectRatioChange('16:9')
+      props.onLivePlaybackModeChange('once')
+      props.onFlipbookChange({ frameCount: 4, frameIntervalMs: 250, startTimeMs: 1000 })
+    })
+
+    expect(
+      JSON.parse(window.localStorage.getItem(PREVIEW_SETTINGS_STORAGE_KEY) ?? '{}'),
+    ).toEqual({
+      version: 1,
+      previewMode: 'flipbook',
+      previewAspectRatio: '16:9',
+      livePlaybackMode: 'once',
+      flipbook: { frameCount: 4, frameIntervalMs: 250, startTimeMs: 1000 },
+    })
+  })
+})
+
 describe('App Run, Save, and keyboard shortcuts', () => {
   const createObjectURL = vi.fn(() => 'blob:shader')
   const revokeObjectURL = vi.fn()
@@ -270,6 +353,26 @@ describe('App Run, Save, and keyboard shortcuts', () => {
     )
   })
 
+  it('passes preview aspect ratio state to PreviewPane and updates it from callback', () => {
+    render(<App />)
+
+    expect(getLastPreviewPaneProps()).toEqual(
+      expect.objectContaining({
+        previewAspectRatio: initialPreviewAspectRatio,
+      }),
+    )
+
+    act(() => {
+      getLastPreviewPaneProps().onPreviewAspectRatioChange('16:9')
+    })
+
+    expect(getLastPreviewPaneProps()).toEqual(
+      expect.objectContaining({
+        previewAspectRatio: '16:9',
+      }),
+    )
+  })
+
   it('runs from the Run button by toggling shouldCompile as an edge trigger', async () => {
     render(<App />)
 
@@ -290,6 +393,38 @@ describe('App Run, Save, and keyboard shortcuts', () => {
         undefined,
       )
     })
+  })
+
+  it('disables Run and Reset while live recording is active', async () => {
+    render(<App />)
+
+    act(() => {
+      getLastPreviewPaneProps().onLiveRecordingChange(true)
+    })
+
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+
+    const editor = screen.getByLabelText('WGSL shader code')
+    const event = dispatchShortcut(editor, { key: 'Enter', ctrlKey: true })
+    expect(event.defaultPrevented).toBe(true)
+    expect(getLastPreviewPaneProps().shouldCompile).toBe(false)
+  })
+
+  it('keeps Save available while live recording is active', () => {
+    render(<App />)
+
+    act(() => {
+      getLastPreviewPaneProps().onLiveRecordingChange(true)
+    })
+
+    const saveButton = screen.getByRole('button', { name: 'Save' })
+    expect(saveButton).toBeEnabled()
+    fireEvent.click(saveButton)
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
   })
 
   it('runs with Ctrl+Enter from the CodeMirror editor without changing code', async () => {

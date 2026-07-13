@@ -4,6 +4,7 @@ import {
   AI_CHAT_HISTORY_MAX_ITEMS,
   AI_CHAT_MESSAGE_MAX_LENGTH,
   AI_CHAT_REQUEST_ID_MAX_LENGTH,
+  AI_CHAT_SESSION_ID_MAX_LENGTH,
   normalizeAiChatMessageRequest,
 } from '../../src/aiChat/types.ts'
 import type {
@@ -88,6 +89,7 @@ async function handleMessages(
 
   writeJson(response, 200, {
     requestId: normalizedRequest.requestId,
+    ...(result.sessionId ? { sessionId: result.sessionId } : {}),
     message: {
       role: 'assistant',
       content: result.message,
@@ -159,7 +161,8 @@ function isAiChatMessageRequest(value: unknown): value is AiChatMessageRequest {
     value.code.length <= AI_CHAT_CODE_MAX_LENGTH &&
     Array.isArray(value.history) &&
     value.history.length <= AI_CHAT_HISTORY_MAX_ITEMS &&
-    value.history.every(isChatHistoryItem)
+    value.history.every(isChatHistoryItem) &&
+    isValidOptionalSessionId(value.sessionId)
   )
 }
 
@@ -192,6 +195,20 @@ function isValidRequestId(value: unknown): value is string {
     typeof value === 'string' &&
     value.length > 0 &&
     value.length <= AI_CHAT_REQUEST_ID_MAX_LENGTH
+  )
+}
+
+function isValidOptionalSessionId(value: unknown): boolean {
+  return value === undefined || isValidSessionId(value)
+}
+
+function isValidSessionId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= AI_CHAT_SESSION_ID_MAX_LENGTH &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
   )
 }
 

@@ -6,6 +6,9 @@ import type {
 import { AiChatServerError } from './errors.ts'
 
 export const CODEX_MODEL_CLI_VALUES = {
+  'gpt-5.6-sol': 'gpt-5.6-sol',
+  'gpt-5.6-terra': 'gpt-5.6-terra',
+  'gpt-5.6-luna': 'gpt-5.6-luna',
   'gpt-5.5': 'gpt-5.5',
   'gpt-5.4': 'gpt-5.4',
   'gpt-5.4-mini': 'gpt-5.4-mini',
@@ -24,6 +27,8 @@ export const CODEX_PERFORMANCE_CLI_VALUES = {
   medium: 'model_reasoning_effort="medium"',
   high: 'model_reasoning_effort="high"',
   xhigh: 'model_reasoning_effort="xhigh"',
+  max: 'model_reasoning_effort="max"',
+  ultra: 'model_reasoning_effort="ultra"',
 } as const
 
 export const CLAUDE_PERFORMANCE_CLI_VALUES = {
@@ -49,9 +54,13 @@ export const AI_CHAT_AGENT_CLI_CONFIG = {
       '--sandbox',
       'read-only',
       '--skip-git-repo-check',
+      '--json',
       '--output-last-message',
     ],
     modelArgs: {
+      'gpt-5.6-sol': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.6-sol']],
+      'gpt-5.6-terra': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.6-terra']],
+      'gpt-5.6-luna': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.6-luna']],
       'gpt-5.5': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.5']],
       'gpt-5.4': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4']],
       'gpt-5.4-mini': ['--model', CODEX_MODEL_CLI_VALUES['gpt-5.4-mini']],
@@ -65,6 +74,8 @@ export const AI_CHAT_AGENT_CLI_CONFIG = {
       medium: ['--config', CODEX_PERFORMANCE_CLI_VALUES.medium],
       high: ['--config', CODEX_PERFORMANCE_CLI_VALUES.high],
       xhigh: ['--config', CODEX_PERFORMANCE_CLI_VALUES.xhigh],
+      max: ['--config', CODEX_PERFORMANCE_CLI_VALUES.max],
+      ultra: ['--config', CODEX_PERFORMANCE_CLI_VALUES.ultra],
     },
   },
   claude: {

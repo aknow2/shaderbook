@@ -135,6 +135,7 @@ function isAiChatMessageResponse(value: unknown): value is AiChatMessageResponse
 
   return (
     value.message.role === 'assistant' &&
+    (value.sessionId === undefined || typeof value.sessionId === 'string') &&
     typeof value.message.content === 'string' &&
     (value.message.proposedCode === null || typeof value.message.proposedCode === 'string') &&
     Array.isArray(value.message.notes) &&

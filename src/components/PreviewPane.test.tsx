@@ -1,9 +1,9 @@
 import { StrictMode, type ComponentProps } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultShader } from '../constants/defaultShader'
-import { initialFlipbookSettings } from '../types/preview'
-import { PreviewPane } from './PreviewPane'
+import { initialFlipbookSettings, initialPreviewAspectRatio } from '../types/preview'
+import { computeCanvasCssSize, PreviewPane } from './PreviewPane'
 
 const renderFlipbookMocks = vi.hoisted(() => {
   const calls: any[][] = []
@@ -292,6 +292,74 @@ function createWebGpuMock() {
   }
 }
 
+class MockMediaRecorder {
+  static instances: MockMediaRecorder[] = []
+  static isTypeSupported = vi.fn(() => true)
+
+  state: RecordingState = 'inactive'
+  ondataavailable: ((event: BlobEvent) => void) | null = null
+  onstop: (() => void) | null = null
+  onerror: (() => void) | null = null
+  stream: MediaStream
+  options: MediaRecorderOptions
+  start = vi.fn(() => {
+    this.state = 'recording'
+  })
+  stop = vi.fn(() => {
+    this.state = 'inactive'
+    this.ondataavailable?.({ data: new Blob(['video'], { type: 'video/webm' }) } as BlobEvent)
+    this.onstop?.()
+  })
+
+  constructor(stream: MediaStream, options: MediaRecorderOptions = {}) {
+    this.stream = stream
+    this.options = options
+    MockMediaRecorder.instances.push(this)
+  }
+}
+
+function installRecordingMocks() {
+  MockMediaRecorder.instances = []
+  MockMediaRecorder.isTypeSupported.mockClear()
+  const stopTrack = vi.fn()
+  const stream = {
+    getTracks: vi.fn(() => [{ stop: stopTrack }]),
+  } as unknown as MediaStream
+  const captureStream = vi.fn(() => stream)
+  const createObjectURL = vi.fn(() => 'blob:recording')
+  const revokeObjectURL = vi.fn()
+  const anchorClick = vi.fn()
+  let clickedAnchor: HTMLAnchorElement | null = null
+
+  Object.defineProperty(HTMLCanvasElement.prototype, 'captureStream', {
+    configurable: true,
+    value: captureStream,
+  })
+  vi.stubGlobal('MediaRecorder', MockMediaRecorder)
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    value: createObjectURL,
+  })
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    value: revokeObjectURL,
+  })
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {
+    clickedAnchor = document.querySelector('a')
+    anchorClick()
+  })
+
+  return {
+    stream,
+    stopTrack,
+    captureStream,
+    createObjectURL,
+    revokeObjectURL,
+    anchorClick,
+    getClickedAnchor: () => clickedAnchor,
+  }
+}
+
 function createMockFlipbookResult() {
   return renderFlipbookMocks.createResult()
 }
@@ -319,9 +387,14 @@ function createPreviewProps(
     code: defaultShader,
     shouldCompile: false,
     previewMode: 'live',
+    previewAspectRatio: initialPreviewAspectRatio,
     flipbook: initialFlipbookSettings,
+    initialLivePlaybackMode: 'loop',
+    onLivePlaybackModeChange: vi.fn(),
     onPreviewModeChange: vi.fn(),
+    onPreviewAspectRatioChange: vi.fn(),
     onFlipbookChange: vi.fn(),
+    onLiveRecordingChange: vi.fn(),
     onCompileSuccess: vi.fn(),
     onCompileError: vi.fn(),
     onFpsChange: vi.fn(),
@@ -400,9 +473,14 @@ describe('PreviewPane WebGPU integration', () => {
           code={defaultShader}
           shouldCompile={false}
           previewMode="live"
+          previewAspectRatio="fit"
           flipbook={initialFlipbookSettings}
+          initialLivePlaybackMode="loop"
+          onLivePlaybackModeChange={vi.fn()}
           onPreviewModeChange={vi.fn()}
+          onPreviewAspectRatioChange={vi.fn()}
           onFlipbookChange={vi.fn()}
+          onLiveRecordingChange={vi.fn()}
           onCompileSuccess={onCompileSuccess}
           onCompileError={vi.fn()}
           onFpsChange={vi.fn()}
@@ -416,6 +494,48 @@ describe('PreviewPane WebGPU integration', () => {
     expect(gpu.createShaderModule).toHaveBeenCalledTimes(1)
     expect(gpu.createRenderPipelineAsync).toHaveBeenCalledTimes(1)
     expect(raf.requestAnimationFrame).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops and resumes the live render loop from the preview controls', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview()
+
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+    const stopButton = await screen.findByRole('button', { name: 'Stop render' })
+
+    fireEvent.click(stopButton)
+
+    expect(raf.cancelAnimationFrame).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Resume render' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume render' }))
+
+    expect(raf.requestAnimationFrame).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Stop render' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('resumes live rendering after a successful Run while stopped', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+    const props = createPreviewProps()
+    const { rerender } = render(<PreviewPane {...props} shouldCompile={false} />)
+
+    await waitFor(() => expect(gpu.createRenderPipelineAsync).toHaveBeenCalledTimes(1))
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop render' }))
+
+    rerender(<PreviewPane {...props} shouldCompile />)
+
+    await waitFor(() => expect(gpu.createRenderPipelineAsync).toHaveBeenCalledTimes(2))
+    expect(raf.requestAnimationFrame).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Stop render' })).toBeInTheDocument()
   })
 
   it('cleans up animation frame, observer, and device on unmount', async () => {
@@ -463,22 +583,68 @@ describe('PreviewPane WebGPU integration', () => {
     expect(onResolutionChange).toHaveBeenLastCalledWith(640, 360)
   })
 
-  it('renders an accessible Fit scale menu with Fit as the only option', () => {
+  it('applies fixed aspect ratio to the canvas drawing buffer and CSS stage size', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    const onResolutionChange = vi.fn()
+    Object.defineProperty(window, 'devicePixelRatio', {
+      configurable: true,
+      value: 2,
+    })
+
+    const { container } = renderPreview({
+      previewAspectRatio: '1:1',
+      onResolutionChange,
+    })
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+    const canvas = screen.getByLabelText('WebGPU shader preview') as HTMLCanvasElement
+    const stage = container.querySelector('.canvas-stage') as HTMLElement
+    const observer = MockResizeObserver.instances[0]
+
+    act(() => {
+      observer.callback(
+        [
+          {
+            contentRect: { width: 320, height: 180 },
+          } as ResizeObserverEntry,
+        ],
+        observer as unknown as ResizeObserver,
+      )
+    })
+
+    expect(stage.style.width).toBe('180px')
+    expect(stage.style.height).toBe('180px')
+    expect(canvas.width).toBe(360)
+    expect(canvas.height).toBe(360)
+    expect(onResolutionChange).toHaveBeenLastCalledWith(360, 360)
+  })
+
+  it('computes aspect-constrained canvas CSS sizes', () => {
+    expect(computeCanvasCssSize(320, 180, 'fit')).toEqual({ width: 320, height: 180 })
+    expect(computeCanvasCssSize(320, 180, '1:1')).toEqual({ width: 180, height: 180 })
+    expect(computeCanvasCssSize(320, 180, '16:9')).toEqual({ width: 320, height: 180 })
+    expect(computeCanvasCssSize(320, 180, '9:16')).toEqual({ width: 101.25, height: 180 })
+  })
+
+  it('renders an accessible aspect ratio menu with all supported options', () => {
     setNavigatorGpu(undefined)
     installRafMock()
 
     renderPreview()
 
-    const scaleMenu = screen.getByRole('combobox', { name: 'Preview scale' })
-    const options = screen.getAllByRole('option')
+    const scaleMenu = screen.getByRole('combobox', { name: 'Preview aspect ratio' })
+    const options = within(scaleMenu).getAllByRole('option')
 
-    expect(scaleMenu).toHaveAttribute('aria-label', 'Preview scale')
+    expect(scaleMenu).toHaveAttribute('aria-label', 'Preview aspect ratio')
     expect(scaleMenu).toHaveValue('fit')
-    expect(options).toHaveLength(1)
+    expect(options).toHaveLength(4)
     expect(options[0]).toHaveTextContent('Fit')
     expect(options[0]).toHaveValue('fit')
+    expect(options[1]).toHaveValue('1:1')
+    expect(options[2]).toHaveValue('16:9')
+    expect(options[3]).toHaveValue('9:16')
 
-    fireEvent.change(scaleMenu, { target: { value: 'fit' } })
+    fireEvent.change(scaleMenu, { target: { value: '1:1' } })
     expect(scaleMenu).toHaveValue('fit')
   })
 
@@ -539,7 +705,7 @@ describe('PreviewPane WebGPU integration', () => {
 
     renderPreview()
 
-    expect(screen.getByRole('combobox', { name: 'Preview scale' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Preview aspect ratio' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Enter fullscreen preview' }),
     ).toBeInTheDocument()
@@ -558,6 +724,216 @@ describe('PreviewPane WebGPU integration', () => {
     expect(gpu.device.queue.submit).not.toHaveBeenCalled()
   })
 
+  it('stops the loop and renders a single frame when live playback is set to Once', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+    const onFpsChange = vi.fn()
+
+    renderPreview({ onFpsChange })
+    await screen.findByRole('button', { name: 'Stop render' })
+    expect(gpu.device.queue.submit).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Live playback mode' }), {
+      target: { value: 'once' },
+    })
+
+    expect(raf.cancelAnimationFrame).toHaveBeenCalledTimes(1)
+    expect(raf.getPendingCount()).toBe(0)
+    expect(gpu.device.queue.submit).toHaveBeenCalledTimes(1)
+    expect(onFpsChange).toHaveBeenLastCalledWith(0)
+    expect(screen.queryByRole('button', { name: 'Stop render' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Resume render' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start live recording' })).toBeDisabled()
+  })
+
+  it('renders a single frame after Run in Once mode without restarting the loop', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+    const props = createPreviewProps()
+    const { rerender } = render(<PreviewPane {...props} shouldCompile={false} />)
+
+    await screen.findByRole('button', { name: 'Stop render' })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Live playback mode' }), {
+      target: { value: 'once' },
+    })
+    expect(gpu.device.queue.submit).toHaveBeenCalledTimes(1)
+    const rafCallsBefore = raf.requestAnimationFrame.mock.calls.length
+
+    rerender(<PreviewPane {...props} shouldCompile />)
+
+    await waitFor(() => expect(gpu.device.queue.submit).toHaveBeenCalledTimes(2))
+    expect(gpu.createShaderModule).toHaveBeenCalledTimes(2)
+    expect(raf.requestAnimationFrame.mock.calls.length).toBe(rafCallsBefore)
+  })
+
+  it('re-renders a single frame on resize in Once mode', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview()
+    await screen.findByRole('button', { name: 'Stop render' })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Live playback mode' }), {
+      target: { value: 'once' },
+    })
+    expect(gpu.device.queue.submit).toHaveBeenCalledTimes(1)
+
+    const observer = MockResizeObserver.instances[0]
+    act(() => {
+      observer.callback(
+        [
+          {
+            contentRect: { width: 320, height: 180 },
+          } as ResizeObserverEntry,
+        ],
+        observer as unknown as ResizeObserver,
+      )
+    })
+
+    expect(gpu.device.queue.submit).toHaveBeenCalledTimes(2)
+  })
+
+  it('restarts the live render loop when playback is switched back to Loop', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview()
+    await screen.findByRole('button', { name: 'Stop render' })
+    const playbackMenu = screen.getByRole('combobox', { name: 'Live playback mode' })
+
+    fireEvent.change(playbackMenu, { target: { value: 'once' } })
+    expect(raf.getPendingCount()).toBe(0)
+
+    fireEvent.change(playbackMenu, { target: { value: 'loop' } })
+
+    expect(raf.getPendingCount()).toBe(1)
+    expect(screen.getByRole('button', { name: 'Stop render' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(gpu.device.queue.submit).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts in Once mode from initialLivePlaybackMode and renders a single frame after compile', async () => {
+    const raf = installRafMock()
+    const gpu = createWebGpuMock()
+
+    renderPreview({ initialLivePlaybackMode: 'once' })
+
+    await waitFor(() => expect(gpu.device.queue.submit).toHaveBeenCalled())
+    expect(raf.requestAnimationFrame).not.toHaveBeenCalled()
+    expect(raf.getPendingCount()).toBe(0)
+    expect(screen.getByRole('combobox', { name: 'Live playback mode' })).toHaveValue('once')
+    expect(screen.queryByRole('button', { name: 'Stop render' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Resume render' })).not.toBeInTheDocument()
+  })
+
+  it('notifies onLivePlaybackModeChange when the playback mode changes', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    const onLivePlaybackModeChange = vi.fn()
+
+    renderPreview({ onLivePlaybackModeChange })
+    await screen.findByRole('button', { name: 'Stop render' })
+    expect(gpu.createShaderModule).toHaveBeenCalled()
+
+    const playbackMenu = screen.getByRole('combobox', { name: 'Live playback mode' })
+    fireEvent.change(playbackMenu, { target: { value: 'once' } })
+
+    expect(onLivePlaybackModeChange).toHaveBeenCalledTimes(1)
+    expect(onLivePlaybackModeChange).toHaveBeenLastCalledWith('once')
+
+    fireEvent.change(playbackMenu, { target: { value: 'loop' } })
+
+    expect(onLivePlaybackModeChange).toHaveBeenLastCalledWith('loop')
+  })
+
+  it('records the live canvas and downloads a webm when stopped', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    const recording = installRecordingMocks()
+    const onLiveRecordingChange = vi.fn()
+
+    renderPreview({ onLiveRecordingChange })
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-07-08T14:35:22'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start live recording' }))
+
+    expect(recording.captureStream).toHaveBeenCalledWith(60)
+    expect(MockMediaRecorder.instances[0].options).toEqual({ mimeType: 'video/webm' })
+    expect(onLiveRecordingChange).toHaveBeenLastCalledWith(true)
+    expect(screen.getByRole('button', { name: 'Stop live recording' })).toHaveTextContent('Stop')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop live recording' }))
+
+    await waitFor(() => expect(recording.anchorClick).toHaveBeenCalledTimes(1))
+    expect(recording.getClickedAnchor()?.download).toBe(
+      'shaderbook-live-recording-20260708-143522.webm',
+    )
+    expect(recording.stopTrack).toHaveBeenCalledTimes(1)
+    expect(recording.revokeObjectURL).toHaveBeenCalledWith('blob:recording')
+    expect(onLiveRecordingChange).toHaveBeenLastCalledWith(false)
+
+    vi.useRealTimers()
+  })
+
+  it('shows a non-fatal recording unsupported message without hiding the live canvas', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    Object.defineProperty(HTMLCanvasElement.prototype, 'captureStream', {
+      configurable: true,
+      value: undefined,
+    })
+
+    renderPreview()
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start live recording' }))
+
+    expect(screen.getByLabelText('WebGPU shader preview')).toBeInTheDocument()
+    expect(screen.getByText('Live recording is not supported in this browser.')).toBeInTheDocument()
+  })
+
+  it('hides recording controls in flipbook mode and disables preview-changing controls while recording', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    installRecordingMocks()
+
+    const { rerender } = renderPreview()
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start live recording' }))
+
+    expect(screen.getByRole('button', { name: 'Flipbook' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Preview aspect ratio' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enter fullscreen preview' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop live recording' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start live recording' })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Flipbook' }))
+    rerender(<PreviewPane {...createPreviewProps()} previewMode="flipbook" />)
+    expect(screen.queryByRole('button', { name: 'Start live recording' })).not.toBeInTheDocument()
+  })
+
+  it('cleans up live recording resources on unmount without downloading', async () => {
+    installRafMock()
+    const gpu = createWebGpuMock()
+    const recording = installRecordingMocks()
+    const onLiveRecordingChange = vi.fn()
+
+    const { unmount } = renderPreview({ onLiveRecordingChange })
+    await waitFor(() => expect(gpu.createShaderModule).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start live recording' }))
+    unmount()
+
+    expect(recording.stopTrack).toHaveBeenCalledTimes(1)
+    expect(recording.anchorClick).not.toHaveBeenCalled()
+    expect(onLiveRecordingChange).toHaveBeenLastCalledWith(false)
+  })
+
   it('stops the live render loop and draws the flipbook once when switching to flipbook mode', async () => {
     const raf = installRafMock()
     const gpu = createWebGpuMock()
@@ -572,9 +948,14 @@ describe('PreviewPane WebGPU integration', () => {
         code={defaultShader}
         shouldCompile={false}
         previewMode="flipbook"
+        previewAspectRatio="fit"
         flipbook={initialFlipbookSettings}
+        initialLivePlaybackMode="loop"
+        onLivePlaybackModeChange={vi.fn()}
         onPreviewModeChange={onPreviewModeChange}
+        onPreviewAspectRatioChange={vi.fn()}
         onFlipbookChange={vi.fn()}
+        onLiveRecordingChange={vi.fn()}
         onCompileSuccess={vi.fn()}
         onCompileError={vi.fn()}
         onFpsChange={vi.fn()}
@@ -744,9 +1125,14 @@ describe('PreviewPane WebGPU integration', () => {
     const props = {
       code: defaultShader,
       previewMode: 'live' as const,
+      previewAspectRatio: 'fit' as const,
       flipbook: initialFlipbookSettings,
+      initialLivePlaybackMode: 'loop' as const,
+      onLivePlaybackModeChange: vi.fn(),
       onPreviewModeChange: vi.fn(),
+      onPreviewAspectRatioChange: vi.fn(),
       onFlipbookChange: vi.fn(),
+      onLiveRecordingChange: vi.fn(),
       onCompileSuccess: vi.fn(),
       onCompileError: vi.fn(),
       onFpsChange: vi.fn(),
@@ -898,9 +1284,14 @@ describe('PreviewPane WebGPU integration', () => {
     const props = {
       code: defaultShader,
       previewMode: 'live' as const,
+      previewAspectRatio: 'fit' as const,
       flipbook: initialFlipbookSettings,
+      initialLivePlaybackMode: 'loop' as const,
+      onLivePlaybackModeChange: vi.fn(),
       onPreviewModeChange: vi.fn(),
+      onPreviewAspectRatioChange: vi.fn(),
       onFlipbookChange: vi.fn(),
+      onLiveRecordingChange: vi.fn(),
       onCompileSuccess,
       onCompileError: vi.fn(),
       onFpsChange: vi.fn(),

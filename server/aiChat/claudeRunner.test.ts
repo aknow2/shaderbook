@@ -385,7 +385,7 @@ describe('runClaude timeout / cancel / error mapping', () => {
     const { registry, fake, promise } = await runWithFakeSpawn()
     const child = fake.children[0]
 
-    vi.advanceTimersByTime(120000)
+    vi.advanceTimersByTime(300000)
 
     expect(registry.getState('request-1', child)).toBe('timedOut')
     child.close(0)
@@ -397,7 +397,7 @@ describe('runClaude timeout / cancel / error mapping', () => {
     const child = fake.children[0]
 
     const elapsedSinceSpawn = Date.now() - fake.calls[0].startedAt
-    vi.advanceTimersByTime(120000 - elapsedSinceSpawn)
+    vi.advanceTimersByTime(300000 - elapsedSinceSpawn)
     expect(child.kill).toHaveBeenCalledWith('SIGTERM')
     expect(child.kill).not.toHaveBeenCalledWith('SIGKILL')
     child.kill.mockClear()
@@ -430,7 +430,7 @@ describe('runClaude timeout / cancel / error mapping', () => {
   it('maps close after timeout to a TIMEOUT error', async () => {
     const { fake, promise } = await runWithFakeSpawn()
 
-    vi.advanceTimersByTime(120000)
+    vi.advanceTimersByTime(300000)
     fake.children[0].close(0)
 
     await expect(promise).rejects.toMatchObject({ code: 'TIMEOUT' })

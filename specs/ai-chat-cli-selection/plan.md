@@ -416,7 +416,7 @@ export async function runAiChatAgent(
 | prompt | `buildAiChatPrompt` で共通化する |
 | response parse | `parseAiOutput` で共通化する |
 | requestRegistry | 既存の `requestId -> child` Map を agent 非依存で再利用する |
-| timeout / cancel | 既存と同じ 120000ms、SIGTERM -> 2000ms -> SIGKILL を使う |
+| timeout / cancel | 300000ms、SIGTERM -> 2000ms -> SIGKILL を使う |
 | runner result | `message` / `proposedCode` / `notes` に統一する |
 
 分けるもの:
@@ -472,7 +472,7 @@ export async function runAiChatAgent(
 | cwd | `process.cwd()` |
 | stdout | AI 応答文字列として buffer し、close code 0 後に `parseAiOutput` へ渡す |
 | stderr | 失敗時の診断用に短く保持する。AI 応答として parse しない |
-| timeout | `120000` ms |
+| timeout | `300000` ms |
 
 `--output-format json` は Claude CLI 自体の envelope JSON になる可能性があるため、MVP では採用しない。AI には prompt で `message` / `proposedCode` / `notes` の JSON だけを返すよう指示し、stdout text 全体を `parseAiOutput` で検証する。将来 `--json-schema` を使う場合も runner 内の argv mapping だけを変更すればよい。
 
@@ -675,9 +675,9 @@ export type { ParsedAiOutput as ParsedCodexOutput };
 | registry key | `requestId` のみ |
 | registry value | child process と state のみ。agent は持たない |
 | cancel API | 既存どおり `/api/ai-chat/cancel` に `requestId` だけを送る |
-| timeout | Codex / Claude とも `AI_CHAT_SERVER_TIMEOUT_MS` の 120000ms |
+| timeout | Codex / Claude とも `AI_CHAT_SERVER_TIMEOUT_MS` の 300000ms |
 | force kill | 既存どおり SIGTERM -> 2000ms -> SIGKILL |
-| client timeout | 既存どおり 130000ms |
+| client timeout | 310000ms |
 
 runner は Codex / Claude とも child を spawn した直後に `registry.register(requestId, child)` を呼ぶ。同一 `requestId` が実行中なら child を SIGTERM し、400 `INVALID_REQUEST` を返す。
 

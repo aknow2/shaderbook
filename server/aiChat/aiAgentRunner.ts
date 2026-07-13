@@ -12,6 +12,7 @@ export type AiChatRunnerResult = {
   message: string
   proposedCode: string | null
   notes: string[]
+  sessionId?: string
 }
 
 export type AiChatAgentRunner = (
