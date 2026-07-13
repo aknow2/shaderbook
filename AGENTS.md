@@ -56,8 +56,8 @@ The application is deliberately local-first:
 
 - the shader draft is versioned in browser `localStorage`; chat state lives only in memory;
 - Save/export/record actions create local downloads;
-- there is no account, database, cloud persistence, sharing, or production API server;
-- AI chat exists only while the Vite development server is running.
+- there is no account, database, cloud persistence, sharing, or externally deployed API server;
+- AI chat runs through a loopback-only Express server during development or local built execution.
 
 ## 2. Sources of truth
 
@@ -77,6 +77,7 @@ Feature documents:
 | Flipbook mode | `specs/flipbook/` |
 | AI chat | `specs/ai-chat/` |
 | AI CLI/model selection | `specs/ai-chat-cli-selection/` |
+| Standalone AI chat server | `specs/ai-chat-standalone-server/` |
 | Live recording and aspect ratio | `specs/live-recording-aspect-ratio/` |
 
 Some plans predate later features. Do not remove a current capability merely because the base plan does not mention it. When adding a feature, update its spec/plan/task set and this guide if it changes a cross-cutting contract.
@@ -86,7 +87,9 @@ Some plans predate later features. Do not remove a current capability merely bec
 ```sh
 npm install
 npm run dev
+npm run start
 npm run test
+npm run test:e2e
 npm run typecheck
 npm run lint
 npm run build
@@ -109,17 +112,19 @@ Browser (React)
       aiChat/state.ts             pure state/validation helpers
       aiChat/types.ts             browser/server API contract
           |
-          | POST /api/ai-chat/* (development only)
+          | POST /api/ai-chat/*
           v
-Vite middleware
-  server/aiChat/vitePlugin.ts
-    handler.ts                    HTTP validation and response mapping
-    aiAgentRunner.ts              agent dispatch
-      codexRunner.ts              fixed Codex CLI invocation
-      claudeRunner.ts             fixed Claude CLI invocation
-    requestRegistry.ts            timeout/cancel/process ownership
-    promptBuilder.ts              constrained WGSL prompt
-    parseAiOutput.ts              common JSON response validation
+Loopback Express server
+  server/index.ts                 listener and graceful shutdown
+    server/app.ts                 Express app, API mount, static frontend
+      aiChat/router.ts            Express routing boundary
+      aiChat/handler.ts           HTTP validation and response mapping
+      aiChat/aiAgentRunner.ts     agent dispatch
+        aiChat/codexRunner.ts     fixed Codex CLI invocation
+        aiChat/claudeRunner.ts    fixed Claude CLI invocation
+      aiChat/requestRegistry.ts   timeout/cancel/process ownership
+      aiChat/promptBuilder.ts     constrained WGSL prompt
+      aiChat/parseAiOutput.ts     common JSON response validation
 ```
 
 There is no router or external state library. `App.tsx` owns state shared across panes; components own local UI and resource-lifecycle state. Pure calculations and protocol rules belong outside components so they can be tested without rendering.
@@ -132,7 +137,8 @@ There is no router or external state library. `App.tsx` owns state shared across
 - `src/aiChat/`: shared API types, client-side validation/state helpers, and fetch client. `types.ts` is imported by both browser and server.
 - `src/editor/`: CodeMirror WGSL language support.
 - `src/constants/`: default user shader.
-- `server/aiChat/`: local Vite middleware and subprocess integration. It is not included in the static production app.
+- `server/app.ts` and `server/index.ts`: loopback Express app, built frontend serving, listener, and shutdown lifecycle.
+- `server/aiChat/`: Express API routing, HTTP validation, and subprocess integration.
 - `specs/`: requirements, architectural plans, and implementation task records by feature.
 - `public/`: static assets copied by Vite.
 
@@ -220,7 +226,7 @@ The agent is instructed to return one JSON object:
 
 Parse and validate the structure before returning it. Never apply proposed code automatically: the user must press Apply. Apply updates the editor and deliberately triggers compilation as one explicit user action. Chat history is bounded and non-persistent. A Codex session ID is valid only for Codex; changing agents must not leak incompatible session state.
 
-The API middleware is registered with `apply: 'serve'`. Static output from `vite build` has no AI endpoint; introducing a deployed backend is a separate architectural decision, not an incidental change.
+Vite does not own the API implementation. During `npm run dev`, it proxies `/api/ai-chat/*` to the loopback Express server. `npm run build` emits both frontend assets and a Node server bundle; `npm start` serves them from one local same-origin process. External deployment, authentication, and non-loopback binding remain separate architectural decisions.
 
 ## 9. Implementation patterns
 
@@ -254,7 +260,8 @@ Avoid:
 - Shader wrapper, pipeline validation, buffers, render loop, flipbook grid/resources: `src/gpu/*.test.ts`.
 - Flipbook input/export: `src/flipbookSettings.test.ts`, `src/flipbookExport.test.ts`.
 - AI selection, validation, history, client behavior: `src/aiChat/*.test.ts`.
-- HTTP validation, prompt/parser, runner argv/timeout/cancel, registry, Vite mounting: `server/aiChat/*.test.ts`.
+- HTTP validation, Express routing, prompt/parser, runner argv/timeout/cancel, registry, and development proxy: `server/*.test.ts`, `server/aiChat/*.test.ts`.
+- Built server and Vite proxy process boundaries: `e2e/*.e2e.ts` through `npm run test:e2e`.
 
 Mock the boundary, not the behavior under test. GPU tests should assert command/buffer interactions; runner tests should inject/mock process spawning; HTTP tests should exercise serialized request/response contracts. Use fake timers and deterministic RAF where time drives behavior. Restore globals and mocks after each test.
 

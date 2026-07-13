@@ -19,5 +19,12 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "server/**/*.ts", "src/aiChat/types.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.server.config.ts",
+    "vitest.e2e.config.ts",
+    "e2e/**/*.ts",
+    "server/**/*.ts",
+    "src/aiChat/types.ts"
+  ]
 }

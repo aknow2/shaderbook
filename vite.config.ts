@@ -1,10 +1,17 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
-import { aiChatVitePlugin } from './server/aiChat/vitePlugin.ts'
+import { getShaderbookServerOrigin } from './server/config.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), aiChatVitePlugin()],
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api/ai-chat': {
+        target: getShaderbookServerOrigin(),
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
