@@ -125,6 +125,37 @@ describe('EditorPane', () => {
     expect(container.querySelector('.cm-lineNumbers')).toHaveTextContent('2')
   })
 
+  it('opens the search panel with Mod+F and closes it with Escape', () => {
+    const onChange = vi.fn()
+    const { container } = render(<EditorPane code={'first\nsecond'} onChange={onChange} />)
+    const editor = screen.getByLabelText('WGSL shader code')
+
+    dispatchShortcut(editor, { key: 'f', ctrlKey: true })
+
+    const searchInput = screen.getByPlaceholderText('Find')
+    expect(searchInput).toBeInTheDocument()
+    expect(container.querySelector('.cm-panels-top')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+
+    dispatchShortcut(searchInput, { key: 'Escape' })
+
+    expect(screen.queryByPlaceholderText('Find')).not.toBeInTheDocument()
+  })
+
+  it('finds and selects matches from the search panel', () => {
+    render(<EditorPane code={'alpha\nbeta\nalpha'} onChange={vi.fn()} />)
+    const editor = screen.getByLabelText('WGSL shader code')
+    const view = getEditorView()
+
+    dispatchShortcut(editor, { key: 'f', ctrlKey: true })
+    fireEvent.change(screen.getByPlaceholderText('Find'), { target: { value: 'beta' } })
+    // The search panel's Enter handler checks the legacy event.keyCode field.
+    fireEvent.keyDown(screen.getByPlaceholderText('Find'), { key: 'Enter', keyCode: 13 })
+
+    const { from, to } = view.state.selection.main
+    expect(view.state.sliceDoc(from, to)).toBe('beta')
+  })
+
   it('does not change the document for Ctrl+Enter and still lets the event bubble', () => {
     const onChange = vi.fn()
     const documentKeyDown = vi.fn()

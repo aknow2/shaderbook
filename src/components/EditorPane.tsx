@@ -1,4 +1,5 @@
 import { history, historyKeymap, indentWithTab, defaultKeymap } from '@codemirror/commands'
+import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search'
 import { EditorState } from '@codemirror/state'
 import {
   EditorView,
@@ -51,6 +52,46 @@ const editorTheme = EditorView.theme(
       outline: '2px solid var(--color-accent)',
       outlineOffset: '-2px',
     },
+    '.cm-panels': {
+      backgroundColor: 'var(--color-bg-elevated)',
+      color: 'var(--color-text)',
+    },
+    '.cm-panels.cm-panels-top': {
+      borderBottom: '1px solid var(--color-border)',
+    },
+    '.cm-panel.cm-search': {
+      fontFamily: 'var(--font-mono)',
+      fontSize: '12px',
+      padding: '6px 12px',
+    },
+    '.cm-panel.cm-search input, .cm-panel.cm-search button': {
+      fontFamily: 'inherit',
+      fontSize: 'inherit',
+      color: 'var(--color-text)',
+    },
+    '.cm-panel.cm-search .cm-textfield': {
+      backgroundColor: 'var(--color-panel-soft)',
+      border: '1px solid var(--color-border-strong)',
+      borderRadius: '4px',
+    },
+    '.cm-panel.cm-search .cm-textfield:focus': {
+      outline: '1px solid var(--color-accent)',
+      outlineOffset: '-1px',
+    },
+    '.cm-panel.cm-search .cm-button': {
+      background: 'var(--color-panel-soft)',
+      backgroundImage: 'none',
+      border: '1px solid var(--color-border-strong)',
+      borderRadius: '4px',
+    },
+    '.cm-panel.cm-search .cm-button:hover': {
+      borderColor: 'var(--color-accent)',
+    },
+    '.cm-panel.cm-search [name="close"]': {
+      color: 'var(--color-text-muted)',
+      fontSize: '16px',
+      padding: '0 6px',
+    },
   },
   { dark: true },
 )
@@ -80,10 +121,18 @@ export function EditorPane({ code, onChange }: EditorPaneProps) {
           lineNumbers(),
           highlightActiveLine(),
           history(),
+          search({ top: true }),
+          highlightSelectionMatches(),
           wgslLanguage,
           oneDark,
           editorTheme,
-          keymap.of([indentWithTab, ...runShortcutKeymap, ...historyKeymap, ...defaultKeymap]),
+          keymap.of([
+            indentWithTab,
+            ...runShortcutKeymap,
+            ...searchKeymap,
+            ...historyKeymap,
+            ...defaultKeymap,
+          ]),
           EditorView.contentAttributes.of({
             'aria-label': 'WGSL shader code',
             'aria-multiline': 'true',
